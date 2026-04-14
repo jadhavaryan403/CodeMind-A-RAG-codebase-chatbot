@@ -1,4 +1,4 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from django.conf import settings
 
@@ -7,9 +7,9 @@ _explainer_chain = None
 def _get_explainer_chain():
     global _explainer_chain
     if _explainer_chain is None:
-        llm = ChatGoogleGenerativeAI(
-            model=settings.LLM_MODEL_NAME,
-            google_api_key=settings.GOOGLE_API_KEY,
+        llm = ChatGroq(
+            model="openai/gpt-oss-120b",
+            groq_api_key=settings.GROQ_API_KEY,
             temperature=0.2,
         )
         prompt = ChatPromptTemplate.from_messages([
@@ -49,4 +49,5 @@ def generate_explanations_batch(chunks: list) -> list[str]:
                 f"(lines {chunk.start_line}–{chunk.end_line})."
             )
             explanations.append(fallback)
+        print(f"Generated explanation for {len(explanations)} : {chunk.symbol_name} : ({chunk.chunk_type})")
     return explanations

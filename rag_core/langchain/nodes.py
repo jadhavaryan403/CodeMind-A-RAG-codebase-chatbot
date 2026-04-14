@@ -27,6 +27,8 @@ from rag_core.services.faiss_store import query_index
 from rag_core.services.reranker import rerank
 
 
+TOP_K_LLM = 5  # Number of top reranked chunks to include in LLM context
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PYDANTIC SCHEMAS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -212,7 +214,7 @@ def rerank_docs(query: str, documents: list) -> list:
 def build_context(ranked: list) -> str:
     """Format top 3 reranked chunks into a context string for the LLM."""
     parts = []
-    for i, c in enumerate(ranked[:3], 1):
+    for i, c in enumerate(ranked[:TOP_K_LLM], 1):
         parts.append(
             f"[{i}] {c.symbol} L{c.start_line}–{c.end_line})\n"
             f"Code:\n```python\n{c.code}\n```"
