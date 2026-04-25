@@ -36,26 +36,56 @@ def build_and_save_index(
     user_id:      int,
     project_id:   int,
     chunks:       list[CodeChunk],
-    explanations: list[str],
+    explanations: list[dict],
     project=None,
-) -> None:
+                    ) -> None:
     if not chunks:
         raise ValueError("Cannot build FAISS index with zero chunks.")
 
-    documents = [
-        Document(
-            page_content=explanation,
-            metadata={
-                "code":       chunk.code_text,
-                "symbol":     chunk.symbol_name,
-                "chunk_type": chunk.chunk_type,
-                "file_path":  chunk.file_path,
-                "start_line": chunk.start_line,
-                "end_line":   chunk.end_line,
-            },
+    def normalize(name: str) -> str:
+        return name.split(".")[-1]
+
+    symbol_to_summary = {
+        normalize(chunk.symbol_name): exp["one_line_summary"]
+        for chunk, exp in zip(chunks, explanations)
+    }
+
+    print(f"Symbol to summary: {symbol_to_summary}")
+
+    documents = []
+
+    for chunk, explanation in zip(chunks, explanations):
+
+        deps = explanation["dependencies"]
+
+        dep_summaries = []
+
+        for d in deps:
+            key = normalize(d)
+
+            if key in symbol_to_summary:
+                dep_summaries.append(
+                    f"{key}: {symbol_to_summary[key]}"
+                )
+
+        documents.append(
+            Document(
+                page_content=explanation["detailed_explanation"],
+                metadata={
+                    "code": chunk.code_text,
+                    "symbol": chunk.symbol_name,
+                    "chunk_type": chunk.chunk_type,
+                    "file_path": chunk.file_path,
+                    "start_line": chunk.start_line,
+                    "end_line": chunk.end_line,
+                    "one_line_summary": explanation["one_line_summary"],
+                    "dependencies": deps,
+                    "dependency_summaries": dep_summaries,
+                },
+            )
         )
-        for chunk, explanation in zip(chunks, explanations)
-    ]
+
+        print(f"Dependency summaries for {chunk.symbol_name}: {dep_summaries}")
 
     store = FAISS.from_documents(documents, get_embeddings())
     store.save_local(str(_store_dir(user_id, project_id)))
@@ -75,7 +105,7 @@ def build_and_save_index(
                 chunk_type=chunk.chunk_type,
                 code_hash=compute_hash(chunk.code_text),
                 faiss_id=i,
-                explanation=explanation,
+                explanation=explanation["detailed_explanation"],
                 start_line=chunk.start_line,
                 end_line=chunk.end_line,
             )
@@ -138,3 +168,4 @@ def query_index(
             "Please index files first."
         )
     return store.similarity_search(query, k=top_k)
+

@@ -16,7 +16,7 @@ from django.conf import settings
 
 from rag_core.models import Project, ChunkIndex
 from rag_core.services.ast_chunker import CodeChunk, chunk_file
-from rag_core.services.explainer import generate_explanation
+from rag_core.services.explainer import generate_explanations_batch
 from rag_core.services.embedder import get_embeddings
 from rag_core.services.faiss_store import load_index, save_index, _store_dir
 
@@ -154,28 +154,49 @@ def add_to_faiss(
     """
     from langchain_core.documents import Document
 
-    docs = [
-        Document(
-            page_content=explanation,
-            metadata={
-                "code":       chunk.code_text,
-                "symbol":     chunk.symbol_name,
-                "chunk_type": chunk.chunk_type,
-                "file_path":  chunk.file_path,
-                "start_line": chunk.start_line,
-                "end_line":   chunk.end_line,
-            }
+    symbol_to_summary = {
+        chunk.symbol_name: exp["one_line_summary"]
+        for chunk, exp in zip(chunks, explanations)
+    }
+
+    documents = []
+
+    for chunk, explanation in zip(chunks, explanations):
+
+        deps = explanation["dependencies"]
+
+        dep_summaries = [
+            f"{d}: {symbol_to_summary[d]}"
+            for d in deps
+            if d in symbol_to_summary
+        ]
+
+        documents.append(
+            Document(
+                page_content=explanation["detailed_explanation"],
+                metadata={
+                    "code": chunk.code_text,
+                    "symbol": chunk.symbol_name,
+                    "chunk_type": chunk.chunk_type,
+                    "file_path": chunk.file_path,
+                    "start_line": chunk.start_line,
+                    "end_line": chunk.end_line,
+
+                    # 🔥 core additions
+                    "one_line_summary": explanation["one_line_summary"],
+                    "dependencies": deps,
+                    "dependency_summaries": dep_summaries,
+                },
+            )
         )
-        for chunk, explanation in zip(chunks, explanations)
-    ]
 
     # Get the current max index before adding
     start_id = store.index.ntotal if hasattr(store, 'index') else 0
 
-    store.add_documents(docs)
+    store.add_documents(documents)
 
     # New IDs are sequential from start_id
-    new_ids = list(range(start_id, start_id + len(docs)))
+    new_ids = list(range(start_id, start_id + len(documents)))
     return store, new_ids
 
 
@@ -267,16 +288,7 @@ def incremental_reindex(
     chunks_to_add = added_chunks + changed_chunks
     explanations  = []
 
-    for chunk in chunks_to_add:
-        try:
-            explanation = generate_explanation(chunk)
-        except Exception:
-            explanation = (
-                f"{chunk.chunk_type} '{chunk.symbol_name}' "
-                f"in {chunk.file_path} "
-                f"(lines {chunk.start_line}–{chunk.end_line})."
-            )
-        explanations.append(explanation)
+    explanations = generate_explanations_batch(chunks_to_add)
 
     # ── Step 7: Add new + changed chunks to FAISS ────────────────────────────
     store, new_faiss_ids = add_to_faiss(store, chunks_to_add, explanations)
@@ -293,7 +305,7 @@ def incremental_reindex(
             chunk_type=chunk.chunk_type,
             code_hash=compute_hash(chunk.code_text),
             faiss_id=faiss_id,
-            explanation=explanation,
+            explanation=explanation["detailed_explanation"],
             start_line=chunk.start_line,
             end_line=chunk.end_line,
         )

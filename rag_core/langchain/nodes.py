@@ -208,18 +208,42 @@ def rerank_docs(query: str, documents: list) -> list:
         Document(page_content=doc.page_content, metadata=doc.metadata)
         for doc in documents
     ]
-    return rerank(query, docs)
+    return rerank(query, docs)[:TOP_K_LLM]  # Keep top K for LLM context
 
 
 def build_context(ranked: list) -> str:
-    """Format top 3 reranked chunks into a context string for the LLM."""
+    """
+    Build LLM context in format:
+
+    Chunk 1:
+    <code>
+
+    Dependencies:
+    dep1: summary
+    dep2: summary
+    """
+
     parts = []
+
     for i, c in enumerate(ranked[:TOP_K_LLM], 1):
+
+        code = c.code
+        dep_summaries = getattr(c, "dependency_summaries", [])
+        one_liner = getattr(c, "one_line_summary", "")
+
+        dep_block = ""
+        if dep_summaries:
+            dep_lines = "\n".join(dep_summaries[:5])
+            dep_block = f"\n\nDependencies:\n{dep_lines}"
+
         parts.append(
-            f"[{i}] {c.symbol} L{c.start_line}–{c.end_line})\n"
-            f"Code:\n```python\n{c.code}\n```"
+            f"Chunk {i}: ({one_liner})"
+            f"\n```python\n{code}\n```"
+            f"{dep_block}"
         )
+
     return "\n\n".join(parts) if parts else "No relevant code found."
+
 
 
 def build_cited_chunks(ranked: list) -> list[dict]:
@@ -230,7 +254,7 @@ def build_cited_chunks(ranked: list) -> list[dict]:
             "chunk_type": c.chunk_type,
             "start_line": c.start_line,
             "end_line":   c.end_line,
-            "score":      c.score,
+            "score":      getattr(c, "score", None),
             "code":       c.code,
         }
         for c in ranked
@@ -272,6 +296,8 @@ def evaluate_and_answer(
             "context":  build_context(ranked),
             "question": query,
         })
+
+        print(f'[context] :\n{build_context(ranked)}\n')
         return result
     except Exception as e:
         return EvaluationResult(
@@ -371,7 +397,10 @@ def stream_answer(
 
         # Step 2: Rerank
         ranked = rerank_docs(current_query, documents)
-
+        if not ranked:
+            yield f"data: {json.dumps({'type': 'metadata', 'message': 'No relevant code found.'})}\n\n"
+            break
+        
         # Step 3: Send cited chunks to frontend
         cited = build_cited_chunks(ranked)
         yield f"data: {json.dumps({'type': 'metadata', 'cited_chunks': cited})}\n\n"

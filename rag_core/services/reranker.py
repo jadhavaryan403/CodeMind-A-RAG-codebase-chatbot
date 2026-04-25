@@ -33,6 +33,8 @@ class RankedChunk:
     start_line: int
     end_line: int
     score: float          # CrossEncoder relevance score (higher = more relevant)
+    one_line_summary: str = ""
+    dependency_summaries: list[str] = None
 
 
 def rerank(query: str, documents: list[Document]) -> list[RankedChunk]:
@@ -65,6 +67,8 @@ def rerank(query: str, documents: list[Document]) -> list[RankedChunk]:
             start_line=doc.metadata.get("start_line", 0),
             end_line=doc.metadata.get("end_line", 0),
             score=score,
+            one_line_summary=doc.metadata.get("one_line_summary", ""),
+            dependency_summaries=doc.metadata.get("dependency_summaries", []),
         )
         for doc, score in zip(documents, scores)
     ]

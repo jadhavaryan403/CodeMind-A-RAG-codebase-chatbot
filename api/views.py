@@ -39,6 +39,28 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+def _validate_explanations(explanations, chunks):
+    """
+    Ensure structured explanations are valid.
+    Prevents silent failures in FAISS + metadata.
+    """
+    valid = []
+    for chunk, exp in zip(chunks, explanations):
+        if not isinstance(exp, dict):
+            valid.append({
+                "one_line_summary": f"{chunk.symbol_name} logic",
+                "detailed_explanation": chunk.code_text[:200],
+                "dependencies": []
+            })
+            continue
+
+        valid.append({
+            "one_line_summary": exp.get("one_line_summary", "")[:100],
+            "detailed_explanation": exp.get("detailed_explanation", ""),
+            "dependencies": list(set(exp.get("dependencies", [])))
+        })
+    return valid
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_view(request):
@@ -213,7 +235,13 @@ class FileUploadView(APIView):
             if not all_chunks:
                 raise ValueError("No parseable chunks found.")
 
+            print(f"Total chunks before explanation: {len(all_chunks)}")
             explanations = generate_explanations_batch(all_chunks)
+            explanations = _validate_explanations(explanations, all_chunks)
+
+            for chunk, exp in zip(all_chunks[:5], explanations[:5]):
+                print(f"[GRAPH] {chunk.symbol_name} → {exp['dependencies']}")
+
             build_and_save_index(
                 user_id=request.user.id,
                 project_id=project.pk,
@@ -242,47 +270,6 @@ class FileUploadView(APIView):
             "skipped_errors": errors,
         })
 
-
-# ── POST /api/projects/<id>/query/ ────────────────────────────────────────────
-class QueryView(APIView):
-
-    def post(self, request, project_id: int):
-        project = get_object_or_404(Project, pk=project_id, owner=request.user)
-
-        if project.status != Project.Status.READY:
-            return Response(
-                {"error": f"Project not ready (status: {project.status})."},
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        serializer = QuerySerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        query = serializer.validated_data["query"]
-
-        graph = get_rag_graph()
-        result = graph.invoke({
-            "query":                  query,
-            "user_id":                request.user.id,
-            "project_id":             project.pk,
-            "retrieved_explanations": [],
-            "retrieved_code":         [],
-            "retrieved_metadata":     [],
-            "reranked_explanations":  [],
-            "reranked_code":          [],
-            "reranked_scores":        [],
-            "reranked_metadata":      [],
-            "final_answer":           "",
-            "error":                  None,
-        })
-
-        if result.get("error"):
-            return Response({"error": result["error"]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        return Response({
-            "query":        query,
-            "answer":       result["final_answer"],
-            "cited_chunks": result.get("reranked_metadata", []),
-        })
 
 
 class ConversationListCreateView(APIView):
@@ -324,88 +311,6 @@ class ConversationDetailView(APIView):
         conv = self._get_conv(request, conv_id)
         conv.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class ConversationQueryView(APIView):
-    """POST /api/conversations/<id>/query/  — ask a question inside a conversation"""
-
-    def post(self, request, conv_id: int):
-        conv    = get_object_or_404(Conversation, pk=conv_id, project__owner=request.user)
-        project = conv.project
-
-        if project.status != Project.Status.READY:
-            return Response(
-                {"error": f"Project not ready (status: {project.status})."},
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        serializer = QuerySerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        query = serializer.validated_data["query"]
-
-        # Persist user message immediately
-        Message.objects.create(
-            conversation=conv,
-            role=Message.Role.USER,
-            content=query,
-        )
-
-        # Run LangGraph pipeline
-        graph  = get_rag_graph()
-        result = graph.invoke({
-            "query":          query,
-            "original_query": query,    # ← NEW
-            "user_id":        request.user.id,
-            "project_id":     project.pk,
-            "chat_history":   chat_history,
-            "retry_count":    0,         # ← NEW
-            "max_retries":    2,         # ← NEW
-            "context_sufficient": False, # ← NEW (will be set by grade node)
-            "rewrite_reason": "",        # ← NEW
-            "retrieved_explanations": [],
-            "retrieved_code":         [],
-            "retrieved_metadata":     [],
-            "reranked_explanations":  [],
-            "reranked_code":          [],
-            "reranked_scores":        [],
-            "reranked_metadata":      [],
-            "final_answer":           "",
-            "error":                  None,
-        })
-
-        if result.get("error"):
-            # Save error as assistant message so history is complete
-            Message.objects.create(
-                conversation=conv,
-                role=Message.Role.ASSISTANT,
-                content=f"Error: {result['error']}",
-            )
-            return Response({"error": result["error"]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        cited = result.get("reranked_metadata", [])
-        answer = result["final_answer"]
-
-        # Persist assistant message
-        Message.objects.create(
-            conversation=conv,
-            role=Message.Role.ASSISTANT,
-            content=answer,
-            cited_chunks=cited,
-        )
-
-        # Auto-title the conversation from first user question
-        if conv.messages.count() <= 2 and conv.title == "New Chat":
-            conv.title = query[:60] + ("…" if len(query) > 60 else "")
-            conv.save(update_fields=["title", "updated_at"])
-        else:
-            conv.save(update_fields=["updated_at"])
-
-        return Response({
-            "query":        query,
-            "answer":       answer,
-            "cited_chunks": cited,
-            "conversation": ConversationListSerializer(conv).data,
-        })
 
 
 class ConversationStreamView(APIView):
@@ -584,7 +489,13 @@ class GithubImportView(APIView):
             if not all_chunks:
                 raise ValueError("No parseable Python chunks found in repository.")
 
+            print(f"Total chunks before explanation: {len(all_chunks)}")
             explanations = generate_explanations_batch(all_chunks)
+            explanations = _validate_explanations(explanations, all_chunks)
+
+            for chunk, exp in zip(all_chunks[:5], explanations[:5]):
+                print(f"[GRAPH] {chunk.symbol_name} → {exp['dependencies']}")
+
             build_and_save_index(
                 user_id=request.user.id,
                 project_id=project.pk,
@@ -720,7 +631,13 @@ class IndexFilesView(APIView):
             if not all_chunks:
                 raise ValueError("No parseable chunks found.")
 
+            print(f"Total chunks before explanation: {len(all_chunks)}")
             explanations = generate_explanations_batch(all_chunks)
+            explanations = _validate_explanations(explanations, all_chunks)
+
+            for chunk, exp in zip(all_chunks[:5], explanations[:5]):
+                print(f"[GRAPH] {chunk.symbol_name} → {exp['dependencies']}")
+
             build_and_save_index(
                 user_id=request.user.id,
                 project_id=project.pk,
