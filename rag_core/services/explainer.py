@@ -3,13 +3,16 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 from django.conf import settings
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from utils.llm_callback import TokenTrackingCallback
+import logging
 
 _explainer_chain = None
+logger = logging.getLogger(__name__)
 
 
 # 🔹 Structured Output Schema
 class CodeExplanation(BaseModel):
+    '''Pydantic model defining the expected structure of the code explanation output.'''
     one_line_summary: str = Field(description="Very short 5–10 word summary")
     detailed_explanation: str = Field(description="Full explanation of code")
     dependencies: list[str] = Field(
@@ -17,6 +20,7 @@ class CodeExplanation(BaseModel):
     )
 
 def _get_explainer_chain():
+    '''Initializes and returns a LangChain chain for generating code explanations.'''
     global _explainer_chain
 
     if _explainer_chain is None:
@@ -55,20 +59,30 @@ def _get_explainer_chain():
 
 
 def generate_explanation(chunk) -> dict:
+    '''Generates a structured explanation for a given code chunk using the LangChain chain.'''
     try:
-        response = _get_explainer_chain().invoke({
-            "symbol_name": chunk.symbol_name,
-            "chunk_type":  chunk.chunk_type,
-            "start_line":  chunk.start_line,
-            "end_line":    chunk.end_line,
-            "code":        chunk.code_text,
-        })
+        callback = TokenTrackingCallback()
 
-        return response.model_dump()
+        response = _get_explainer_chain().invoke(
+            {
+                "symbol_name": chunk.symbol_name,
+                "chunk_type": chunk.chunk_type,
+                "start_line": chunk.start_line,
+                "end_line": chunk.end_line,
+                "code": chunk.code_text,
+            },
+            config={"callbacks": [callback]}
+        )
+
+        # ✅ Token usage
+        print("Total tokens:", callback.total_tokens)
+        print("Prompt tokens:", callback.prompt_tokens)
+        print("Completion tokens:", callback.completion_tokens)
+
+        return response.model_dump() ,callback
 
     except Exception as e:
-        # 🔹 Safe fallback (VERY important)
-        print(e)
+        logger.error(f"Error generating explanation for {chunk.symbol_name}: {e}")
         return {
             "one_line_summary": f"{chunk.symbol_name} logic",
             "detailed_explanation": (
@@ -80,29 +94,32 @@ def generate_explanation(chunk) -> dict:
 
 
 def generate_explanations_batch(chunks: list) -> list[dict]:
-    print("Entered sequential explanation generation")
-    print(f"Chunks received: {len(chunks)}")
-
+    '''Generates explanations for a batch of code chunks, tracking token usage for each.'''
     results = []
 
     for chunk in chunks:
         try:
-            res = generate_explanation(chunk)
-            results.append(res)
+            res, callback = generate_explanation(chunk)
 
-            print(f"Generated: {chunk.symbol_name}")
-            print(f"Summary: {res['one_line_summary']}")
-            print(f"Dependencies: {res['dependencies']}")
+            results.append({
+                "data": res,
+                "usage": {
+                    "prompt_tokens": callback.prompt_tokens,
+                    "completion_tokens": callback.completion_tokens
+                }
+            })
 
         except Exception as e:
-            print(f"Error in {chunk.symbol_name}: {e}")
+            logger.error(f"Error generating explanation for {chunk.symbol_name}: {e}")
 
-            # fallback to safe empty structure
             results.append({
-                "symbol_name": chunk.symbol_name,
-                "summary": f"{chunk.symbol_name} logic",
-                "dependencies": [],
-                "error": str(e)
+                "data": {
+                    "symbol_name": chunk.symbol_name,
+                    "summary": f"{chunk.symbol_name} logic",
+                    "dependencies": [],
+                    "error": str(e)
+                },
+                "usage": None
             })
 
     return results

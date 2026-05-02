@@ -286,9 +286,10 @@ def incremental_reindex(
 
     # ── Step 6: Generate explanations for new + changed chunks ───────────────
     chunks_to_add = added_chunks + changed_chunks
-    explanations  = []
 
-    explanations = generate_explanations_batch(chunks_to_add)
+    results = generate_explanations_batch(chunks_to_add)
+    explanations = [item["data"] for item in results]
+    usages = [item["usage"] for item in results]
 
     # ── Step 7: Add new + changed chunks to FAISS ────────────────────────────
     store, new_faiss_ids = add_to_faiss(store, chunks_to_add, explanations)
@@ -308,9 +309,11 @@ def incremental_reindex(
             explanation=explanation["detailed_explanation"],
             start_line=chunk.start_line,
             end_line=chunk.end_line,
+            input_tokens=usage["prompt_tokens"] if usage else 0,
+            output_tokens=usage["completion_tokens"] if usage else 0,
         )
-        for chunk, explanation, faiss_id in zip(
-            chunks_to_add, explanations, new_faiss_ids
+        for chunk, explanation, usage, faiss_id in zip(
+            chunks_to_add, explanations, usages, new_faiss_ids
         )
     ]
     ChunkIndex.objects.bulk_create(chunk_index_rows)
