@@ -83,9 +83,10 @@ class Message(models.Model):
     conversation  = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
     role          = models.CharField(max_length=20, choices=Role.choices)
     content       = models.TextField()
-    # Stores the reranked chunk metadata returned by LangGraph
     cited_chunks  = models.JSONField(default=list, blank=True)
     created_at    = models.DateTimeField(auto_now_add=True)
+    input_tokens   = models.PositiveIntegerField(default=0)
+    output_tokens  = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ["created_at"]
@@ -112,6 +113,8 @@ class ChunkIndex(models.Model):
     start_line  = models.IntegerField(default=0)
     end_line    = models.IntegerField(default=0)
     updated_at  = models.DateTimeField(auto_now=True)
+    input_tokens = models.PositiveIntegerField(default=0)
+    output_tokens = models.PositiveIntegerField(default=0)
 
     class Meta:
         # A symbol is unique per file per project
@@ -123,3 +126,4 @@ class ChunkIndex(models.Model):
 
     def __str__(self):
         return f"{self.symbol} [{self.project.name}]"
+
