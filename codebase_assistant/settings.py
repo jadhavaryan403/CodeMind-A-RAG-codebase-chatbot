@@ -82,6 +82,39 @@ TEMPLATES = [
 WSGI_APPLICATION = 'codebase_assistant.wsgi.application'
 
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+
+    'formatters': {
+        'standard': {
+            'format': '[{levelname}] {asctime} {name}: {message}',
+            'style': '{',
+        },
+    },
+
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs/app.log'),
+            'formatter': 'standard',
+        },
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+
+    'loggers': {
+        '': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
