@@ -64,6 +64,8 @@ def _validate_explanations(explanations, chunks):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_view(request):
+    '''Register a new user account. Expects username, email, password, password2.'''
+
     username   = request.data.get('username', '').strip()
     email      = request.data.get('email', '').strip()
     password   = request.data.get('password', '')
@@ -97,6 +99,7 @@ def register_view(request):
         errors['password2'] = 'Passwords do not match.'
 
     if errors:
+        logger.warning("Validation errors occurred", extra={"errors": errors})
         return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
     # ── Create user ───────────────────────────────────────────────────────────
@@ -105,6 +108,8 @@ def register_view(request):
         email=email,
         password=password,
     )
+
+    logger.info("User created", extra={"user_id": user.id})
 
     token, _ = Token.objects.get_or_create(user=user)
 
@@ -119,6 +124,8 @@ def register_view(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
+    '''Log in an existing user. Expects username and password. Returns auth token on success.'''
+
     username = request.data.get('username', '').strip()
     password = request.data.get('password', '').strip()
 
@@ -132,6 +139,8 @@ def login_view(request):
                         status=status.HTTP_401_UNAUTHORIZED)
 
     token, _ = Token.objects.get_or_create(user=user)
+    logger.info("User logged in", extra={"user_id": user.id})
+
     return Response({
         'token': token.key,
         'username': user.username,
@@ -141,8 +150,9 @@ def login_view(request):
 
 @api_view(['POST'])
 def logout_view(request):
-    # Delete the token so it can't be reused
+    '''Log out the current user by deleting their auth token.'''
     Token.objects.filter(user=request.user).delete()
+    logger.info("User logged out", extra={"user_id": request.user.id})
     return Response({'message': 'Logged out successfully.'})
 
 # ── Serves frontend.html at / ─────────────────────────────────────────────────
@@ -152,22 +162,30 @@ def frontend_view(request):
 
 # ── GET/POST /api/projects/ ───────────────────────────────────────────────────
 class ProjectListCreateView(APIView):
+    '''GET/POST /api/projects/'''
 
     def get(self, request):
+        '''List all projects for the authenticated user.'''
         projects = Project.objects.filter(owner=request.user)
         return Response(ProjectSerializer(projects, many=True).data)
 
     def post(self, request):
+        '''Create a new project for the authenticated user.'''
         serializer = ProjectSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         project = serializer.save(owner=request.user)
+        logger.info("Project created", extra={"project_id": project.id ,
+                                               "user_id": request.user.id ,
+                                               "project_name": project.name})
         return Response(ProjectSerializer(project).data, status=status.HTTP_201_CREATED)
 
 
 # ── GET /api/projects/<id>/files/ ─────────────────────────────────────────────
 class ProjectFilesView(APIView):
+    '''GET /api/projects/<id>/files/'''
 
     def get(self, request, project_id: int):
+        '''List all uploaded files for a given project.'''
         project = get_object_or_404(Project, pk=project_id, owner=request.user)
         files = project.files.all().order_by("-uploaded_at")
         return Response(UploadedFileSerializer(files, many=True).data)
@@ -178,10 +196,10 @@ class FileUploadView(APIView):
     """POST /api/projects/<id>/upload/"""
 
     def post(self, request, project_id: int):
+        '''Upload files to a specific project.'''
         project = get_object_or_404(Project, pk=project_id, owner=request.user)
 
         uploaded_files = request.FILES.getlist("files")
-        # Frontend sends matching relative paths as a list
         # e.g. ["myapp/views.py", "myapp/models.py"]
         relative_paths = request.POST.getlist("relative_paths")
 
@@ -236,8 +254,16 @@ class FileUploadView(APIView):
                 raise ValueError("No parseable chunks found.")
 
             print(f"Total chunks before explanation: {len(all_chunks)}")
-            explanations = generate_explanations_batch(all_chunks)
+            # Step 1: get results (data + usage)
+            results = generate_explanations_batch(all_chunks)
+
+            # Step 2: split data and usage
+            explanations = [item["data"] for item in results]
+            usages = [item["usage"] for item in results]
+
+            # Step 3: validate explanations (unchanged logic)
             explanations = _validate_explanations(explanations, all_chunks)
+            logger.info("Generated explanations for uploaded files", extra={"project_id": project.pk, "chunk_count": len(all_chunks)})
 
             for chunk, exp in zip(all_chunks[:5], explanations[:5]):
                 print(f"[GRAPH] {chunk.symbol_name} → {exp['dependencies']}")
@@ -247,7 +273,9 @@ class FileUploadView(APIView):
                 project_id=project.pk,
                 chunks=all_chunks,
                 explanations=explanations,
+                usages=usages,
             )
+            logger.info("FAISS index built and saved", extra={"project_id": project.pk})
 
             project.status        = Project.Status.READY
             project.error_message = ""
@@ -276,14 +304,17 @@ class ConversationListCreateView(APIView):
     """GET /api/projects/<id>/conversations/   POST (create new)"""
 
     def get(self, request, project_id: int):
+        '''List all conversations for a given project.'''
         project = get_object_or_404(Project, pk=project_id, owner=request.user)
         convs   = project.conversations.all()
         return Response(ConversationListSerializer(convs, many=True).data)
 
     def post(self, request, project_id: int):
+        '''Create a new conversation (chat) within a project.'''
         project = get_object_or_404(Project, pk=project_id, owner=request.user)
         title   = request.data.get("title", "New Chat").strip() or "New Chat"
         conv    = Conversation.objects.create(project=project, title=title)
+        logger.info("Conversation created", extra={"conversation_id": conv.id, "project_id": project.pk, "user_id": request.user.id})
         return Response(ConversationSerializer(conv).data, status=status.HTTP_201_CREATED)
 
 
@@ -296,10 +327,12 @@ class ConversationDetailView(APIView):
         )
 
     def get(self, request, conv_id: int):
+        '''Retrieve a specific conversation.'''
         conv = self._get_conv(request, conv_id)
         return Response(ConversationSerializer(conv).data)
 
     def patch(self, request, conv_id: int):
+        '''Rename a specific conversation.'''
         conv  = self._get_conv(request, conv_id)
         title = request.data.get("title", "").strip()
         if title:
@@ -308,14 +341,17 @@ class ConversationDetailView(APIView):
         return Response(ConversationSerializer(conv).data)
 
     def delete(self, request, conv_id: int):
+        '''Delete a specific conversation.'''
         conv = self._get_conv(request, conv_id)
         conv.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ConversationStreamView(APIView):
+    """POST /api/conversations/<id>/stream/"""
 
     def post(self, request, conv_id: int):
+        '''Stream the assistant's answer to a user query in real-time using Server-Sent Events (SSE).'''
         conv    = get_object_or_404(Conversation, pk=conv_id, project__owner=request.user)
         project = conv.project
 
@@ -344,7 +380,8 @@ class ConversationStreamView(APIView):
         )
         conv.save(update_fields=["updated_at"])
 
-        collected = {"full_text": "", "cited_chunks": []}
+        collected = {"full_text": "", "cited_chunks": [], 
+        "usage": {"prompt_tokens": 0, "completion_tokens": 0}}
 
         print("Starting stream_answer with chat_history:", chat_history)
         
@@ -358,6 +395,9 @@ class ConversationStreamView(APIView):
                             collected["cited_chunks"] = payload["cited_chunks"]
                         elif payload["type"] == "done":
                             collected["full_text"] = payload["full_text"]
+                            usage = payload.get("usage", {})
+                            collected["usage"]["prompt_tokens"] = usage.get("prompt_tokens", 0)
+                            collected["usage"]["completion_tokens"] = usage.get("completion_tokens", 0)
                     except Exception:
                         pass
                 yield event
@@ -371,6 +411,8 @@ class ConversationStreamView(APIView):
                     role=Message.Role.ASSISTANT,
                     content=answer,
                     cited_chunks=cited,
+                    input_tokens=collected["usage"]["prompt_tokens"],     
+                    output_tokens=collected["usage"]["completion_tokens"] 
                 )
                 if conv.messages.count() <= 2 and conv.title == "New Chat":
                     conv.title = query[:60] + ("…" if len(query) > 60 else "")
@@ -398,8 +440,10 @@ class GithubRepoInfoView(APIView):
             return Response({'error': 'URL is required.'}, status=400)
         try:
             info = get_repo_info(url)
+            logger.info("Retrieved GitHub repo info", extra={"repo_url": url})
             return Response(info)
         except GithubFetchError as e:
+            logger.error("Failed to retrieve GitHub repo info", extra={"repo_url": url, "error": str(e)})
             return Response({'error': str(e)}, status=400)
 
 
@@ -427,6 +471,7 @@ class GithubImportView(APIView):
         try:
             github_files = fetch_github_repo(url)
         except GithubFetchError as e:
+            logger.error("Failed to fetch GitHub repo files", extra={"repo_url": url, "error": str(e)})
             return Response({'error': str(e)}, status=400)
 
         if not github_files:
@@ -490,8 +535,16 @@ class GithubImportView(APIView):
                 raise ValueError("No parseable Python chunks found in repository.")
 
             print(f"Total chunks before explanation: {len(all_chunks)}")
-            explanations = generate_explanations_batch(all_chunks)
+            # Step 1: get results (data + usage)
+            results = generate_explanations_batch(all_chunks)
+
+            # Step 2: split data and usage
+            explanations = [item["data"] for item in results]
+            usages = [item["usage"] for item in results]
+
+            # Step 3: validate explanations (unchanged logic)
             explanations = _validate_explanations(explanations, all_chunks)
+            logger.info("Generated explanations for GitHub-imported files", extra={"project_id": project.pk, "chunk_count": len(all_chunks)})
 
             for chunk, exp in zip(all_chunks[:5], explanations[:5]):
                 print(f"[GRAPH] {chunk.symbol_name} → {exp['dependencies']}")
@@ -501,7 +554,9 @@ class GithubImportView(APIView):
                 project_id=project.pk,
                 chunks=all_chunks,
                 explanations=explanations,
+                usages=usages,
             )
+            logger.info("FAISS index built and saved", extra={"project_id": project.pk})
 
             project.status        = Project.Status.READY
             project.error_message = ''
@@ -594,6 +649,7 @@ class IndexFilesView(APIView):
     Step 2 — Chunks, explains, and indexes files already saved to disk.
     """
     def post(self, request, project_id: int):
+        '''Index files that have already been saved to disk for this project.'''
         project = get_object_or_404(Project, pk=project_id, owner=request.user)
 
         if project.status == Project.Status.INDEXING:
@@ -632,8 +688,16 @@ class IndexFilesView(APIView):
                 raise ValueError("No parseable chunks found.")
 
             print(f"Total chunks before explanation: {len(all_chunks)}")
-            explanations = generate_explanations_batch(all_chunks)
+            # Step 1: get results (data + usage)
+            results = generate_explanations_batch(all_chunks)
+
+            # Step 2: split data and usage
+            explanations = [item["data"] for item in results]
+            usages = [item["usage"] for item in results]
+
+            # Step 3: validate explanations (unchanged logic)
             explanations = _validate_explanations(explanations, all_chunks)
+            logger.info("Generated explanations for files to be indexed", extra={"project_id": project.pk, "chunk_count": len(all_chunks)})
 
             for chunk, exp in zip(all_chunks[:5], explanations[:5]):
                 print(f"[GRAPH] {chunk.symbol_name} → {exp['dependencies']}")
@@ -643,8 +707,10 @@ class IndexFilesView(APIView):
                 project_id=project.pk,
                 chunks=all_chunks,
                 explanations=explanations,
+                usages=usages,
                 project=project,
             )
+            logger.info("FAISS index built and saved", extra={"project_id": project.pk})
 
             project.status        = Project.Status.READY
             project.error_message = ''
@@ -709,6 +775,14 @@ class ReindexView(APIView):
 
             project.status = Project.Status.READY
             project.save(update_fields=['status'])
+
+            logger.info("Re-indexing complete", extra={
+                "project_id": project.pk,
+                "added": result.added_count,
+                "changed": result.changed_count,
+                "deleted": result.deleted_count,
+                "skipped": result.skipped_count,
+            })
 
             return Response({
                 'message': 'Re-indexing complete.',

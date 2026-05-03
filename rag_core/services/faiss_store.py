@@ -12,6 +12,8 @@ All paths are derived from integer PKs only — never from user-supplied strings
 
 from pathlib import Path
 from typing import Optional
+import pickle
+import os
 
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
@@ -32,13 +34,36 @@ def _store_dir(user_id: int, project_id: int) -> Path:
 
 # ── Build & Save ──────────────────────────────────────────────────────────────
 
+def load_symbol_index(path):
+    '''Helper to load the symbol index (pickle) for a given project.'''
+    import pickle
+    with open(path, "rb") as f:
+        return pickle.load(f)
+
+def get_docs_by_faiss_ids(store, ids: list[int]):
+    '''Helper to retrieve Documents from the FAISS store given a list of FAISS IDs.'''
+    docs = []
+
+    for i in ids:
+        try:
+            doc_id = store.index_to_docstore_id[i]   # 🔥 correct mapping
+            doc = store.docstore.search(doc_id)
+            docs.append(doc)
+        except Exception as e:
+            print(f"[FAISS FETCH ERROR] id={i} -> {e}")
+
+    return docs
+
 def build_and_save_index(
     user_id:      int,
     project_id:   int,
     chunks:       list[CodeChunk],
     explanations: list[dict],
+    usages:       list[dict],
     project=None,
-                    ) -> None:
+) -> None:
+    '''Builds a FAISS index from code chunks and their explanations, then saves it to disk.'''
+
     if not chunks:
         raise ValueError("Cannot build FAISS index with zero chunks.")
 
@@ -53,11 +78,11 @@ def build_and_save_index(
     print(f"Symbol to summary: {symbol_to_summary}")
 
     documents = []
+    symbol_index = {}   # ✅ NEW: symbol → Document mapping
 
-    for chunk, explanation in zip(chunks, explanations):
+    for chunk, explanation, usage in zip(chunks, explanations, usages):
 
         deps = explanation["dependencies"]
-
         dep_summaries = []
 
         for d in deps:
@@ -68,27 +93,41 @@ def build_and_save_index(
                     f"{key}: {symbol_to_summary[key]}"
                 )
 
-        documents.append(
-            Document(
-                page_content=explanation["detailed_explanation"],
-                metadata={
-                    "code": chunk.code_text,
-                    "symbol": chunk.symbol_name,
-                    "chunk_type": chunk.chunk_type,
-                    "file_path": chunk.file_path,
-                    "start_line": chunk.start_line,
-                    "end_line": chunk.end_line,
-                    "one_line_summary": explanation["one_line_summary"],
-                    "dependencies": deps,
-                    "dependency_summaries": dep_summaries,
-                },
-            )
+        # ✅ Create document first
+        doc = Document(
+            page_content=explanation["detailed_explanation"],
+            metadata={
+                "code": chunk.code_text,
+                "symbol": chunk.symbol_name,
+                "chunk_type": chunk.chunk_type,
+                "file_path": chunk.file_path,
+                "start_line": chunk.start_line,
+                "end_line": chunk.end_line,
+                "one_line_summary": explanation["one_line_summary"],
+                "dependencies": deps,
+                "dependency_summaries": dep_summaries,
+                "input_tokens": usage["prompt_tokens"] if usage else 0,
+                "output_tokens": usage["completion_tokens"] if usage else 0,
+            },
         )
+
+        # ✅ Store in both places
+        documents.append(doc)
+        symbol_index[chunk.symbol_name] = doc
 
         print(f"Dependency summaries for {chunk.symbol_name}: {dep_summaries}")
 
+    # ✅ Build FAISS index
     store = FAISS.from_documents(documents, get_embeddings())
-    store.save_local(str(_store_dir(user_id, project_id)))
+
+    index_path = str(_store_dir(user_id, project_id))
+    store.save_local(index_path)
+
+    # ✅ Save symbol index (pickle)
+    with open(os.path.join(index_path, "symbol_index.pkl"), "wb") as f:
+        pickle.dump(symbol_index, f)
+
+    # ---------------- DB PART (unchanged) ---------------- #
 
     if project is not None:
         from rag_core.models import ChunkIndex
@@ -108,9 +147,12 @@ def build_and_save_index(
                 explanation=explanation["detailed_explanation"],
                 start_line=chunk.start_line,
                 end_line=chunk.end_line,
+                input_tokens=usage["prompt_tokens"] if usage else 0,
+                output_tokens=usage["completion_tokens"] if usage else 0,
             )
-            for i, (chunk, explanation) in enumerate(zip(chunks, explanations))
+            for i, (chunk, explanation, usage) in enumerate(zip(chunks, explanations, usages))
         ]
+
         ChunkIndex.objects.bulk_create(rows)
 
 

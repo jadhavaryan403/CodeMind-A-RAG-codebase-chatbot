@@ -25,9 +25,14 @@ from django.conf import settings
 
 from rag_core.services.faiss_store import query_index
 from rag_core.services.reranker import rerank
+from utils.llm_callback import TokenTrackingCallback
+from rag_core.models import ChunkIndex
+
+from langchain_groq import ChatGroq
 
 
 TOP_K_LLM = 5  # Number of top reranked chunks to include in LLM context
+MAX_RETRIES = 2
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PYDANTIC SCHEMAS
@@ -37,16 +42,25 @@ class EvaluationResult(BaseModel):
     """
     Structured response from the evaluate_and_answer step.
 
-    The LLM either:
-      - Answers the question  → sufficient=True,  answer=<text>, rewritten_query=None
-      - Rewrites the query    → sufficient=False, answer=None,   rewritten_query=<text>
+    The LLM can now do THREE things:
+
+    1. Answer the question:
+       → sufficient=True, answer=<text>
+
+    2. Rewrite the query for better retrieval:
+       → sufficient=False, rewritten_query=<text>
+
+    3. Request dependency code (multi-hop retrieval):
+       → sufficient=False, request_dependencies={...}
     """
+
     sufficient: bool = Field(
         description=(
             "True if the retrieved context contains enough information "
             "to answer the question accurately."
         )
     )
+
     answer: Optional[str] = Field(
         default=None,
         description=(
@@ -54,13 +68,24 @@ class EvaluationResult(BaseModel):
             "Must be None if sufficient is False."
         )
     )
+
     rewritten_query: Optional[str] = Field(
         default=None,
         description=(
             "A better FAISS search query if sufficient is False. "
-            "Should use specific function names, class names, variable names, "
-            "or technical keywords likely to appear in the source code. "
             "Must be None if sufficient is True."
+        )
+    )
+
+    request_dependencies: Optional[dict] = Field(
+        default=None,
+        description=(
+            "Request specific dependency implementations when the main function "
+            "is present but its dependencies are needed.\n\n"
+            "Json Format:\n"
+            "symbol: <main function name>,\n"
+            "dependencies: [dep1, dep2]\n"
+            "Must be None if sufficient is True or rewritten_query is used."
         )
     )
 
@@ -77,12 +102,12 @@ _force_answer_chain = None
 def _get_base_llm() -> ChatGoogleGenerativeAI:
     global _base_llm
     if _base_llm is None:
-        if not settings.GOOGLE_API_KEY:
-            raise ValueError("GOOGLE_API_KEY is not set in .env")
-        _base_llm = ChatGoogleGenerativeAI(
-            model=settings.LLM_MODEL_NAME,
-            google_api_key=settings.GOOGLE_API_KEY,
-            temperature=0.3,
+        # if not settings.GOOGLE_API_KEY:
+        #     raise ValueError("GOOGLE_API_KEY is not set in .env")
+        _base_llm = ChatGroq(
+            model="openai/gpt-oss-120b",
+            groq_api_key=settings.GROQ_API_KEY,
+            temperature=0.2,
         )
     return _base_llm
 
@@ -97,66 +122,86 @@ def get_evaluator_chain():
     if _evaluator_chain is None:
         prompt = ChatPromptTemplate.from_messages([
             ("system",
-                "You are a helpful code assistant AND a strict retrieval quality judge.\n\n"
+                "You are a strict code assistant AND a retrieval quality evaluator.\n\n"
 
                 "You will receive:\n"
-                "  1. Conversation history (to understand references like 'it', 'that function')\n"
-                "  2. Retrieved code chunks\n"
-                "  3. The user's question\n\n"
+                "1. Conversation history (for resolving references like 'it', 'that function')\n"
+                "2. Retrieved code chunks (with dependencies and summaries)\n"
+                "3. The user's question\n\n"
 
-                "IMPORTANT: You must FIRST identify the TARGET ENTITY.\n"
-                "This could be a function, class, variable, or concept.\n"
-                "If the question uses words like 'it', 'that', etc., resolve it using conversation history.\n\n"
+                "STEP 1: IDENTIFY TARGET ENTITY\n"
+                "Determine the exact target entity (function, class, or concept).\n"
+                "Resolve ambiguous references using conversation history.\n\n"
 
-                "Then you MUST verify:\n"
-                "Do the retrieved chunks actually refer to THIS SAME entity?\n\n"
+                "STEP 2: VALIDATE RETRIEVED CONTEXT\n"
+                "Check whether the retrieved chunks refer to the SAME entity.\n\n"
 
-                "STRICT RULES:\n"
-                "1. If retrieved chunks are about a DIFFERENT function/class/entity:\n"
-                "   → sufficient = false\n"
-                "   → answer = null\n"
-                "   → rewritten_query = a better query using the CORRECT entity name\n\n"
+                "DECISION LOGIC:\n"
 
-                "2. If retrieved chunks are PARTIALLY relevant but missing key details:\n"
-                "   → sufficient = false\n"
-                "   → answer = null\n"
-                "   → rewritten_query = more specific query\n\n"
+                "CASE 1 — WRONG ENTITY:\n"
+                "If chunks are about a DIFFERENT function/class:\n"
+                "→ sufficient = false\n"
+                "→ answer = null\n"
+                "→ rewritten_query = better query with CORRECT entity name\n"
+                "→ request_dependencies = null\n\n"
 
-                "3. ONLY if the chunks clearly contain information about the CORRECT entity:\n"
-                "   → sufficient = true\n"
-                "   → answer = full answer grounded in the provided code\n"
-                "   → rewritten_query = null\n\n"
+                "CASE 2 — PARTIAL CONTEXT (NEEDS BETTER SEARCH):\n"
+                "If chunks are incomplete or vague:\n"
+                "→ sufficient = false\n"
+                "→ answer = null\n"
+                "→ rewritten_query = more specific query\n"
+                "→ request_dependencies = null\n\n"
 
-                "4. NEVER answer using unrelated chunks.\n"
-                "   If the entity in the question does NOT match the entity in the context,\n"
-                "   you MUST mark sufficient=false.\n\n"
+                "CASE 3 — NEED DEPENDENCY IMPLEMENTATION (MULTI-HOP):\n"
+                "If the correct function is present BUT you need implementation\n"
+                "of its dependencies to answer properly:\n"
+                "→ sufficient = false\n"
+                "→ answer = null\n"
+                "→ rewritten_query = null\n"
+                "→ request_dependencies = {{\n"
+                "     \"symbol\": \"<main function>\",\n"
+                "     \"dependencies\": [\"dep1\", \"dep2\"]\n"
+                "  }}\n\n"
 
-                "5. The answer MUST be grounded in the retrieved code.\n"
-                "   If you cannot point to relevant code, mark sufficient=false.\n\n"
+                "IMPORTANT:\n"
+                "- Use this ONLY if the main function is correct but dependencies are missing\n"
+                "- Only include dependencies explicitly needed to answer\n"
+                "- Do NOT request unnecessary dependencies\n\n"
 
-                "REWRITING RULES:\n"
-                "When rewriting, include:\n"
-                "  - exact function/class name\n"
-                "  - relevant keywords like 'return value', 'implementation', etc.\n"
-                "  - terms likely to appear in source code explanation\n\n"
+                "CASE 4 — SUFFICIENT CONTEXT:\n"
+                "If the retrieved chunks clearly contain enough information:\n"
+                "→ sufficient = true\n"
+                "→ answer = full grounded answer\n"
+                "→ rewritten_query = null\n"
+                "→ request_dependencies = null\n\n"
 
-                "EXAMPLE:\n"
-                "Conversation:\n"
-                "User: is register_view implemented?\n"
-                "User: what does it return?\n\n"
-                "Retrieved chunks: about get_bert_embedding\n\n"
-                "→ These are NOT relevant\n\n"
-                "Output:\n"
-                "sufficient = false\n"
-                "answer = null\n"
-                "rewritten_query = \"register_view return value Django\"\n\n"
+                "STRICT RULES\n"
+                "• NEVER answer using unrelated chunks\n"
+                "• NEVER hallucinate missing code\n"
+                "• ALWAYS ground answers in provided code\n"
+                "• ONLY ONE of (answer, rewritten_query, request_dependencies) should be used\n\n"
 
-                "Format any code in answers with triple backticks."
-                ),
-                ("human",
+                "REWRITING GUIDELINES\n"
+                "When rewriting queries, include:\n"
+                "- exact function/class name\n"
+                "- keywords like 'implementation', 'return value'\n"
+                "- terms likely to appear in code\n\n"
+
+                "OUTPUT FORMAT\n"
+                "Return a structured response with:\n"
+                "- sufficient (boolean)\n"
+                "- answer (string or null)\n"
+                "- rewritten_query (string or null)\n"
+                "- request_dependencies (object or null)\n\n"
+
+                "Format any code in answers using triple backticks."
+            ),
+
+            ("human",
                 "Conversation history:\n{history}\n\n"
                 "Retrieved code chunks:\n{context}\n\n"
-                "Question: {question}"),
+                "Question: {question}"
+            ),
         ])
         _evaluator_chain = (
             prompt | _get_base_llm().with_structured_output(EvaluationResult)
@@ -175,8 +220,9 @@ def get_force_answer_chain():
         prompt = ChatPromptTemplate.from_messages([
             ("system",
              "You are a helpful code assistant. "
-             "Answer the question using the provided context as best you can. "
-             "If the context is limited, say so and answer with what is available. "
+             "Answer the question only using the provided context as best you can. "
+             "If the context is not sufficient, do your best to answer based on partial information, but do NOT hallucinate details. "
+             "Say provided context is not sufficient if you truly have no information to answer. "
              "Format code with triple backticks."),
             ("human",
              "Conversation history:\n{history}\n\n"
@@ -291,20 +337,38 @@ def evaluate_and_answer(
     """
 
     try:
-        result: EvaluationResult = get_evaluator_chain().invoke({
-            "history":  build_history_text(chat_history),
-            "context":  build_context(ranked),
-            "question": query,
-        })
+        callback = TokenTrackingCallback()
 
+        result: EvaluationResult = get_evaluator_chain().invoke(
+            {
+                "history": build_history_text(chat_history),
+                "context": build_context(ranked),
+                "question": query,
+            },
+            config={"callbacks": [callback]}
+        )
+
+        # Debug prints
         print(f'[context] :\n{build_context(ranked)}\n')
-        return result
+
+        # ✅ Token usage
+        print("Total tokens:", callback.total_tokens)
+        print("Prompt tokens:", callback.prompt_tokens)
+        print("Completion tokens:", callback.completion_tokens)
+
+        usage = {
+            "prompt_tokens": callback.prompt_tokens,
+            "completion_tokens": callback.completion_tokens,
+        }
+
+        return result, usage
+
     except Exception as e:
         return EvaluationResult(
             sufficient=True,
             answer=f"Error evaluating context: {e}",
             rewritten_query=None,
-        )
+        ), {"prompt_tokens": 0, "completion_tokens": 0}
 
 
 def force_answer(
@@ -316,15 +380,35 @@ def force_answer(
 ) -> str:
     """Called when max retries exhausted. Answers with best available context."""
     try:
-        response = get_force_answer_chain().invoke({
-            "history":     build_history_text(chat_history),
-            "context":     build_context(ranked),
-            "question":    original_query,
-            "retry_count": retry_count,
-        })
-        return response.content
+        callback = TokenTrackingCallback()
+
+        response = get_force_answer_chain().invoke(
+            {
+                "history": build_history_text(chat_history),
+                "context": build_context(ranked),
+                "question": original_query,
+                "retry_count": retry_count,
+            },
+            config={"callbacks": [callback]}
+        )
+
+        # ✅ Token usage
+        print("Total tokens:", callback.total_tokens)
+        print("Prompt tokens:", callback.prompt_tokens)
+        print("Completion tokens:", callback.completion_tokens)
+
+        usage = {
+            "prompt_tokens": callback.prompt_tokens,
+            "completion_tokens": callback.completion_tokens,
+        }
+
+        return response.content, usage
+
     except Exception as e:
-        return f"Could not generate answer after {retry_count} attempts: {e}"
+        return (
+            f"Could not generate answer after {retry_count} attempts: {e}",
+            {"prompt_tokens": 0, "completion_tokens": 0}
+        )
 
 
 def print_final_state(
@@ -359,7 +443,21 @@ def print_final_state(
 # STREAM ANSWER — orchestrates all steps
 # ══════════════════════════════════════════════════════════════════════════════
 
-MAX_RETRIES = 2
+
+def get_faiss_ids_by_symbols(project, symbols):
+    '''Helper to get FAISS IDs for a list of symbols by querying the ChunkIndex.'''
+    from rag_core.models import ChunkIndex
+
+    rows = []
+
+    for sym in symbols:
+        matches = ChunkIndex.objects.filter(
+            project=project,
+            symbol__iendswith=sym   # 🔥 handles class.method vs method
+        )
+        rows.extend(matches)
+
+    return [r.faiss_id for r in rows]
 
 
 def stream_answer(
@@ -369,80 +467,183 @@ def stream_answer(
     chat_history: list[dict] = [],
 ):
     """
-    Full adaptive RAG pipeline. Yields SSE strings to the frontend.
+    Adaptive + Multi-hop RAG pipeline.
 
     Flow:
-        retrieve → rerank → evaluate_and_answer
-                                 ↓              ↓
-                            sufficient?    rewritten_query
-                            stream answer  → retrieve again
+        retrieve → rerank → evaluate
+                               ↓
+        ┌───────────────┬───────────────┬────────────────────┐
+        │ sufficient    │ rewrite       │ dependency request │
+        │ → answer      │ → FAISS retry │ → symbol lookup    │
+        └───────────────┴───────────────┴────────────────────┘
     """
+
     original_query  = query
-    current_query   = query       # updated by LLM on each retry
+    current_query   = query
     retry_count     = 0
     sufficient      = False
     rewrite_reason  = ""
     ranked          = []
     full_text       = ""
+    result          = None  # track last result
 
-    # ── Adaptive retrieval loop ───────────────────────────────────────────────
+    # prevent infinite dependency loops
+    used_dependency_symbols = set()
+
+    total_usage = {
+    "prompt_tokens": 0,
+    "completion_tokens": 0
+    }   
+
+    def normalize(name: str) -> str:
+        return name.split(".")[-1]
+
     while True:
 
-        # Step 1: Retrieve using current query
-        try:
-            documents = retrieve(current_query, user_id, project_id)
-        except ValueError as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-            return
-
-        # Step 2: Rerank
-        ranked = rerank_docs(current_query, documents)
-        if not ranked:
-            yield f"data: {json.dumps({'type': 'metadata', 'message': 'No relevant code found.'})}\n\n"
-            break
-        
-        # Step 3: Send cited chunks to frontend
-        cited = build_cited_chunks(ranked)
-        yield f"data: {json.dumps({'type': 'metadata', 'cited_chunks': cited})}\n\n"
-
-        # Step 4: Single LLM call — evaluate + answer or rewrite
-        # Passes original user query + full history so LLM understands
-        # follow-up questions without needing a separate resolution step
-        result = evaluate_and_answer(
-            query=original_query,     # always the original user question
-            ranked=ranked,
-            chat_history=chat_history,
-            original_query=original_query,
-            retry_count=retry_count,
-        )
-
-        if result.sufficient and result.answer:
-            sufficient = True
-            full_text  = result.answer
-            break
-
+        # safety net to prevent infinite loops in edge cases where LLM keeps asking for dependencies or rewriting without improving retrieval
         if retry_count >= MAX_RETRIES:
-            # Max retries hit — force an answer with best available context
             sufficient = True
-            full_text  = force_answer(
+            full_text ,usage  = force_answer(
                 query=original_query,
                 ranked=ranked,
                 chat_history=chat_history,
                 original_query=original_query,
                 retry_count=retry_count,
             )
+            total_usage["prompt_tokens"] += usage["prompt_tokens"]
+            total_usage["completion_tokens"] += usage["completion_tokens"]
             break
 
-        # Not sufficient — use LLM's rewritten query for next FAISS retrieval
-        rewrite_reason = result.rewritten_query or ""
-        current_query  = result.rewritten_query or f"{original_query} implementation"
-        retry_count   += 1
+        # ── Step 1: Retrieve ONLY when needed ─────────────────────────────
+        if retry_count == 0 or (result and result.rewritten_query):
+            try:
+                documents = retrieve(current_query, user_id, project_id)
+            except ValueError as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                return
 
-    # ── Stream answer word by word ────────────────────────────────────────────
+            ranked = rerank_docs(current_query, documents)
+
+            if not ranked:
+                yield f"data: {json.dumps({'type': 'metadata', 'message': 'No relevant code found.'})}\n\n"
+                break
+
+        # ── Step 2: Send chunks to frontend ───────────────────────────────
+        cited = build_cited_chunks(ranked)
+        yield f"data: {json.dumps({'type': 'metadata', 'cited_chunks': cited})}\n\n"
+
+        # ── Step 3: Evaluate ──────────────────────────────────────────────
+        result ,usage = evaluate_and_answer(
+            query=original_query,
+            ranked=ranked,
+            chat_history=chat_history,
+            original_query=original_query,
+            retry_count=retry_count,
+        )
+
+        total_usage["prompt_tokens"] += usage["prompt_tokens"]
+        total_usage["completion_tokens"] += usage["completion_tokens"]
+
+
+        # ─────────────────────────────────────────────────────────────────
+        # ✅ CASE 1: SUFFICIENT → FINAL ANSWER
+        # ─────────────────────────────────────────────────────────────────
+        if result.sufficient and result.answer:
+            sufficient = True
+            full_text  = result.answer
+            break
+
+        # ─────────────────────────────────────────────────────────────────
+        # 🔥 CASE 2: MULTI-HOP DEPENDENCY REQUEST
+        # ─────────────────────────────────────────────────────────────────
+        if result.request_dependencies:
+            deps = result.request_dependencies.get("dependencies", [])
+            print(f"[MULTI-HOP] Requested deps: {deps}")
+
+            new_deps = [d for d in deps if d not in used_dependency_symbols]
+
+            if not new_deps:
+                print("[MULTI-HOP] No new dependencies to fetch")
+
+                # 🔥 STOP infinite loop → force answer
+                full_text ,usage = force_answer(
+                    query=original_query,
+                    ranked=ranked,
+                    chat_history=chat_history,
+                    original_query=original_query,
+                    retry_count=retry_count,
+                )
+                total_usage["prompt_tokens"] += usage["prompt_tokens"]
+                total_usage["completion_tokens"] += usage["completion_tokens"]
+                sufficient = True
+                break
+
+            used_dependency_symbols.update(new_deps)
+
+            # Step 1: get FAISS ids
+            faiss_ids = get_faiss_ids_by_symbols(project_id, new_deps)
+
+            if not faiss_ids:
+                print("[MULTI-HOP] No matching FAISS IDs found")
+
+            # Step 2: load FAISS
+            from rag_core.services.faiss_store import load_index, get_docs_by_faiss_ids
+            store = load_index(user_id, project_id)
+
+            # Step 3: fetch docs
+            dep_docs = get_docs_by_faiss_ids(store, faiss_ids)
+
+            print(f"[MULTI-HOP] Retrieved {len(dep_docs)} docs from FAISS")
+
+            if not dep_docs:
+                print("[MULTI-HOP] No docs found → forcing answer")
+
+                full_text ,usage = force_answer(
+                    query=original_query,
+                    ranked=ranked,
+                    chat_history=chat_history,
+                    original_query=original_query,
+                    retry_count=retry_count,
+                )
+                total_usage["prompt_tokens"] += usage["prompt_tokens"]
+                total_usage["completion_tokens"] += usage["completion_tokens"]
+                sufficient = True
+                break
+
+            # Step 4: rerank deps
+            dep_ranked = rerank_docs(original_query, dep_docs)
+
+            # 🔥 Step 5: PRIORITY MERGE (critical fix)
+            ranked = dep_ranked + [
+                c for c in ranked if c.symbol not in {d.symbol for d in dep_ranked}
+            ]
+
+            print(f"[MULTI-HOP] Added {len(dep_ranked)} dependency chunks")
+            print(f"[MULTI-HOP] Ranked size after merge: {len(ranked)}")
+
+            retry_count += 1
+            continue
+
+        # ─────────────────────────────────────────────────────────────────
+        # 🔁 CASE 3: REWRITE QUERY
+        # ─────────────────────────────────────────────────────────────────
+        if result.rewritten_query:
+            rewrite_reason = result.rewritten_query
+            current_query  = result.rewritten_query
+            retry_count   += 1
+
+            print(f"[REWRITE] New query: {current_query}")
+            continue
+    
+
+        # fallback safety
+        retry_count += 1
+
+    # ── Stream answer ─────────────────────────────────────────────────────
     for word in full_text.split(" "):
         yield f"data: {json.dumps({'type': 'token', 'text': word + ' '})}\n\n"
 
-    # ── Print terminal summary ────────────────────────────────────────────────
+    # ── Debug summary ─────────────────────────────────────────────────────
     print_final_state(
         original_query=original_query,
         final_query=current_query,
@@ -453,6 +654,11 @@ def stream_answer(
         answer_length=len(full_text),
     )
 
-    yield f"data: {json.dumps({'type': 'done', 'full_text': full_text})}\n\n"
-
+    yield f"data: {json.dumps({'type': 'done',
+                     'full_text': full_text, 
+                     "usage": {
+                        "prompt_tokens": total_usage["prompt_tokens"],
+                        "completion_tokens": total_usage["completion_tokens"]
+        }
+    })}\n\n"
 
