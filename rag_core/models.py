@@ -118,7 +118,7 @@ class ChunkIndex(models.Model):
 
     class Meta:
         # A symbol is unique per file per project
-        unique_together = [('project', 'symbol', 'original_path')]
+        unique_together = [('project', 'symbol', 'original_path', 'start_line', 'end_line')]
         indexes = [
             models.Index(fields=['project', 'symbol']),
             models.Index(fields=['project', 'original_path']),
