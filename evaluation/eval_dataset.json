@@ -1,0 +1,589 @@
+[
+  {
+    "query": "What is the purpose of the ApiConfig class?",
+    "relevant_chunks": [
+      "ApiConfig"
+    ]
+  },
+  {
+    "query": "Which model does the UploadedFileSerializer correspond to and which fields are serialized?",
+    "relevant_chunks": [
+      "UploadedFileSerializer",
+      "Meta"
+    ]
+  },
+  {
+    "query": "How does ConversationSerializer compute the number of messages in a conversation?",
+    "relevant_chunks": [
+      "ConversationSerializer",
+      "ConversationSerializer.get_message_count"
+    ]
+  },
+  {
+    "query": "What fields are exposed by the MessageSerializer?",
+    "relevant_chunks": [
+      "MessageSerializer",
+      "Meta"
+    ]
+  },
+  {
+    "query": "How can I retrieve the content of the last message in a conversation using the serializers?",
+    "relevant_chunks": [
+      "ConversationListSerializer",
+      "ConversationListSerializer.get_last_message"
+    ]
+  },
+  {
+    "query": "What is the default primary key type set for the rag_core app?",
+    "relevant_chunks": [
+      "RagCoreConfig"
+    ]
+  },
+  {
+    "query": "How does the QuerySerializer validate incoming query strings?",
+    "relevant_chunks": [
+      "QuerySerializer"
+    ]
+  },
+  {
+    "query": "What model does the ProjectSerializer work with and how can its fields be customized?",
+    "relevant_chunks": [
+      "ProjectSerializer",
+      "Meta"
+    ]
+  },
+  {
+    "query": "What is the difference between ConversationSerializer and ConversationListSerializer in terms of fields and computed properties?",
+    "relevant_chunks": [
+      "ConversationSerializer",
+      "ConversationSerializer.get_message_count",
+      "ConversationListSerializer",
+      "ConversationListSerializer.get_message_count",
+      "ConversationListSerializer.get_last_message"
+    ]
+  },
+  {
+    "query": "Is there a way to make the MessageSerializer read\u2011only for certain fields?",
+    "relevant_chunks": [
+      "MessageSerializer",
+      "Meta"
+    ]
+  },
+  {
+    "query": "What fields are included in the serializer defined by Meta?",
+    "relevant_chunks": [
+      "Meta"
+    ]
+  },
+  {
+    "query": "How does login_view handle missing credentials?",
+    "relevant_chunks": [
+      "login_view"
+    ]
+  },
+  {
+    "query": "Which HTTP method does ProjectListCreateView support for creating a new project?",
+    "relevant_chunks": [
+      "ProjectListCreateView.post"
+    ]
+  },
+  {
+    "query": "Which view renders the frontend.html template?",
+    "relevant_chunks": [
+      "frontend_view"
+    ]
+  },
+  {
+    "query": "Describe the validation steps performed by register_view before creating a new user.",
+    "relevant_chunks": [
+      "register_view"
+    ]
+  },
+  {
+    "query": "After a successful file upload via FileUploadView.post, what changes are made to the project's status?",
+    "relevant_chunks": [
+      "FileUploadView.post"
+    ]
+  },
+  {
+    "query": "How does ProjectFilesView.get ensure that only the owner can access the files?",
+    "relevant_chunks": [
+      "ProjectFilesView.get"
+    ]
+  },
+  {
+    "query": "What is the sequence of operations when a client requests the list of projects using ProjectListCreateView.get?",
+    "relevant_chunks": [
+      "ProjectListCreateView.get"
+    ]
+  },
+  {
+    "query": "Explain how ConversationListCreateView.get fetches conversations for a given project.",
+    "relevant_chunks": [
+      "ConversationListCreateView.get"
+    ]
+  },
+  {
+    "query": "What does logout_view do with the user's authentication tokens?",
+    "relevant_chunks": [
+      "logout_view"
+    ]
+  },
+  {
+    "query": "What default title is assigned when creating a new conversation without providing a title?",
+    "relevant_chunks": [
+      "ConversationListCreateView.post"
+    ]
+  },
+  {
+    "query": "Which HTTP method is used to rename an existing conversation?",
+    "relevant_chunks": [
+      "ConversationDetailView.patch"
+    ]
+  },
+  {
+    "query": "Can you outline the sequence of operations performed by the GET endpoint for a conversation, including any helper methods it invokes?",
+    "relevant_chunks": [
+      "ConversationDetailView.get",
+      "ConversationDetailView._get_conv"
+    ]
+  },
+  {
+    "query": "How does the server stream the assistant's answer for a conversation using Server\u2011Sent Events?",
+    "relevant_chunks": [
+      "ConversationStreamView.post"
+    ]
+  },
+  {
+    "query": "What validation does GithubRepoInfoView perform on the incoming request before calling the external function to fetch repository information, and which function is called?",
+    "relevant_chunks": [
+      "GithubRepoInfoView.post"
+    ]
+  },
+  {
+    "query": "What response does GithubImportView give when the request payload lacks a GitHub URL?",
+    "relevant_chunks": [
+      "GithubImportView.post"
+    ]
+  },
+  {
+    "query": "How does GithubImportFilesView verify that at least one Python file was retrieved from the repository and how does it update the project's GitHub metadata?",
+    "relevant_chunks": [
+      "GithubImportFilesView.post",
+      "GithubImportFilesView"
+    ]
+  },
+  {
+    "query": "After a successful import of files via GithubImportView, what status is set on the project?",
+    "relevant_chunks": [
+      "GithubImportView.post"
+    ]
+  },
+  {
+    "query": "When IndexFilesView starts indexing, what are the steps taken to read each uploaded file and prepare it for indexing?",
+    "relevant_chunks": [
+      "IndexFilesView"
+    ]
+  },
+  {
+    "query": "Which method handles deleting a conversation and what permission checks are performed before the deletion occurs?",
+    "relevant_chunks": [
+      "ConversationDetailView.delete",
+      "ConversationDetailView._get_conv"
+    ]
+  },
+  {
+    "query": "What does IndexFilesView.post do with uploaded files before sending them to generate_explanations?",
+    "relevant_chunks": [
+      "IndexFilesView.post"
+    ]
+  },
+  {
+    "query": "Which view handles re-indexing a project via a POST request?",
+    "relevant_chunks": [
+      "ReindexView.post"
+    ]
+  },
+  {
+    "query": "How does event_stream extract metadata from streamed answer events?",
+    "relevant_chunks": [
+      "event_stream"
+    ]
+  },
+  {
+    "query": "What function should I call to retrieve documents for a specific user and project?",
+    "relevant_chunks": [
+      "retrieve"
+    ]
+  },
+  {
+    "query": "How are documents reranked after retrieval?",
+    "relevant_chunks": [
+      "rerank_docs"
+    ]
+  },
+  {
+    "query": "What does build_context output and how does it limit the number of chunks?",
+    "relevant_chunks": [
+      "build_context"
+    ]
+  },
+  {
+    "query": "What information does build_cited_chunks include for each ranked object?",
+    "relevant_chunks": [
+      "build_cited_chunks"
+    ]
+  },
+  {
+    "query": "How does get_evaluator_chain construct its prompt chain?",
+    "relevant_chunks": [
+      "get_evaluator_chain"
+    ]
+  },
+  {
+    "query": "Explain the singleton pattern used in _get_base_llm.",
+    "relevant_chunks": [
+      "_get_base_llm"
+    ]
+  },
+  {
+    "query": "If I need to re-index a GitHub project and then answer a query using the top-ranked code snippets, which functions are involved in this workflow?",
+    "relevant_chunks": [
+      "ReindexView.post",
+      "retrieve",
+      "rerank_docs",
+      "build_context"
+    ]
+  },
+  {
+    "query": "What does the build_history_text function return when there is no prior conversation?",
+    "relevant_chunks": [
+      "build_history_text"
+    ]
+  },
+  {
+    "query": "How does the normalize function extract the last segment of a dotted string?",
+    "relevant_chunks": [
+      "normalize"
+    ]
+  },
+  {
+    "query": "Which fields are defined in the Project model?",
+    "relevant_chunks": [
+      "Project"
+    ]
+  },
+  {
+    "query": "What information does Project.__str__ include in its output?",
+    "relevant_chunks": [
+      "Project.__str__"
+    ]
+  },
+  {
+    "query": "How does evaluate_and_answer build the prompt using the chat history and ranked documents?",
+    "relevant_chunks": [
+      "evaluate_and_answer",
+      "build_history_text"
+    ]
+  },
+  {
+    "query": "When the maximum retry limit is reached, which function generates the final answer and what steps does it perform?",
+    "relevant_chunks": [
+      "force_answer",
+      "stream_answer"
+    ]
+  },
+  {
+    "query": "How does stream_answer handle multi\u2011hop dependencies and decide when to re\u2011evaluate the generated answer?",
+    "relevant_chunks": [
+      "stream_answer",
+      "evaluate_and_answer"
+    ]
+  },
+  {
+    "query": "What does print_final_state display after processing a query?",
+    "relevant_chunks": [
+      "print_final_state"
+    ]
+  },
+  {
+    "query": "How can I retrieve Faiss IDs for a list of symbols using the Django ORM?",
+    "relevant_chunks": [
+      "get_faiss_ids_by_symbols",
+      "Migration"
+    ]
+  },
+  {
+    "query": "What is the relationship between the Project model's status choices and the string representation provided by Project.__str__?",
+    "relevant_chunks": [
+      "Project",
+      "Project.__str__"
+    ]
+  },
+  {
+    "query": "What fields are defined on the UploadedFile model?",
+    "relevant_chunks": [
+      "UploadedFile"
+    ]
+  },
+  {
+    "query": "How does the __str__ method of UploadedFile format its output?",
+    "relevant_chunks": [
+      "UploadedFile.__str__"
+    ]
+  },
+  {
+    "query": "Which values can the role field of a Message take?",
+    "relevant_chunks": [
+      "Message",
+      "Role"
+    ]
+  },
+  {
+    "query": "What does Message.__str__ return and how does it truncate the content?",
+    "relevant_chunks": [
+      "Message.__str__"
+    ]
+  },
+  {
+    "query": "How is the filesystem sub\u2011path for a project's vector store constructed?",
+    "relevant_chunks": [
+      "Project.vectorstore_subpath"
+    ]
+  },
+  {
+    "query": "What unique constraints are enforced on the ChunkIndex model?",
+    "relevant_chunks": [
+      "ChunkIndex",
+      "Meta"
+    ]
+  },
+  {
+    "query": "How does ChunkIndex.__str__ represent a chunk instance?",
+    "relevant_chunks": [
+      "ChunkIndex.__str__"
+    ]
+  },
+  {
+    "query": "What default ordering is applied to Conversation querysets?",
+    "relevant_chunks": [
+      "Conversation",
+      "Meta"
+    ]
+  },
+  {
+    "query": "How does Conversation.__str__ build its string representation?",
+    "relevant_chunks": [
+      "Conversation.__str__"
+    ]
+  },
+  {
+    "query": "What status options are available via the Status TextChoices class?",
+    "relevant_chunks": [
+      "Status"
+    ]
+  },
+  {
+    "query": "What does the _extract_source function return and how does it compute the line range?",
+    "relevant_chunks": [
+      "_extract_source"
+    ]
+  },
+  {
+    "query": "Which Pydantic model represents a structured code explanation?",
+    "relevant_chunks": [
+      "CodeExplanation"
+    ]
+  },
+  {
+    "query": "How does the system determine whether a FunctionDef node belongs to a class?",
+    "relevant_chunks": [
+      "_is_method"
+    ]
+  },
+  {
+    "query": "Where are the directories for storing vector indexes created and what helper is used?",
+    "relevant_chunks": [
+      "_store_dir"
+    ]
+  },
+  {
+    "query": "What steps does chunk_file take when parsing a Python file succeeds versus when it fails?",
+    "relevant_chunks": [
+      "chunk_file"
+    ]
+  },
+  {
+    "query": "How are HuggingFace embeddings instantiated and configured in this codebase?",
+    "relevant_chunks": [
+      "get_embeddings"
+    ]
+  },
+  {
+    "query": "Describe the process of generating a single code explanation, including token tracking.",
+    "relevant_chunks": [
+      "generate_explanation",
+      "_get_explainer_chain"
+    ]
+  },
+  {
+    "query": "How does generate_explanations_batch process a list of CodeChunk objects and handle errors?",
+    "relevant_chunks": [
+      "generate_explanations_batch",
+      "generate_explanation"
+    ]
+  },
+  {
+    "query": "Explain how a FAISS index is built from code chunks and saved to disk.",
+    "relevant_chunks": [
+      "build_and_save_index",
+      "save_index",
+      "CodeChunk"
+    ]
+  },
+  {
+    "query": "What is the workflow for loading an existing FAISS index for a given user and project?",
+    "relevant_chunks": [
+      "load_index",
+      "_store_dir"
+    ]
+  },
+  {
+    "query": "What does the `normalize` function return given a dotted module path?",
+    "relevant_chunks": [
+      "normalize"
+    ]
+  },
+  {
+    "query": "Which exception is raised for GitHub API errors?",
+    "relevant_chunks": [
+      "GithubFetchError"
+    ]
+  },
+  {
+    "query": "How can I retrieve the top\u2011k similar documents for a user query?",
+    "relevant_chunks": [
+      "query_index"
+    ]
+  },
+  {
+    "query": "What validation steps are performed before an uploaded file is saved?",
+    "relevant_chunks": [
+      "validate_upload",
+      "save_uploaded_file",
+      "sanitise_relative_path"
+    ]
+  },
+  {
+    "query": "How does `fetch_github_repo` obtain and filter the list of Python files from a repository URL?",
+    "relevant_chunks": [
+      "fetch_github_repo",
+      "_parse_github_url",
+      "_fetch_tree"
+    ]
+  },
+  {
+    "query": "How can I get the default branch name of a repository when only its GitHub URL is known?",
+    "relevant_chunks": [
+      "get_repo_info",
+      "_parse_github_url",
+      "_get_default_branch",
+      "_api_get"
+    ]
+  },
+  {
+    "query": "What HTTP headers are included in GitHub API requests?",
+    "relevant_chunks": [
+      "_get_headers"
+    ]
+  },
+  {
+    "query": "What error handling does `_api_get` perform for common HTTP status codes?",
+    "relevant_chunks": [
+      "_api_get",
+      "GithubFetchError"
+    ]
+  },
+  {
+    "query": "What attributes are defined in the `GithubFile` class?",
+    "relevant_chunks": [
+      "GithubFile"
+    ]
+  },
+  {
+    "query": "How does `_fetch_file_content` construct the URL to download a raw file from a specific commit or branch?",
+    "relevant_chunks": [
+      "_fetch_file_content",
+      "_get_headers"
+    ]
+  },
+  {
+    "query": "What does the compute_hash function return for a given source code string?",
+    "relevant_chunks": [
+      "compute_hash"
+    ]
+  },
+  {
+    "query": "Describe the full workflow of incremental_reindex, including how it processes new files, detects changes, and updates the FAISS store.",
+    "relevant_chunks": [
+      "incremental_reindex",
+      "chunk_all_files_with_paths",
+      "diff_chunks",
+      "add_to_faiss",
+      "remove_from_faiss",
+      "IncrementalIndexResult"
+    ]
+  },
+  {
+    "query": "How can I get a human\u2011readable summary of an IncrementalIndexResult instance?",
+    "relevant_chunks": [
+      "IncrementalIndexResult.__str__"
+    ]
+  },
+  {
+    "query": "Which function loads the cross\u2011encoder model used by rerank, and how does rerank apply it to rank documents?",
+    "relevant_chunks": [
+      "_get_cross_encoder",
+      "rerank"
+    ]
+  },
+  {
+    "query": "What happens inside remove_from_faiss when the list of IDs to delete is empty?",
+    "relevant_chunks": [
+      "remove_from_faiss"
+    ]
+  },
+  {
+    "query": "When adding code chunks to FAISS with add_to_faiss, what information is stored in each Document's metadata?",
+    "relevant_chunks": [
+      "add_to_faiss"
+    ]
+  },
+  {
+    "query": "How does TokenTrackingCallback track token usage after a language model finishes generating a response?",
+    "relevant_chunks": [
+      "TokenTrackingCallback.__init__",
+      "TokenTrackingCallback.on_llm_end"
+    ]
+  },
+  {
+    "query": "How does diff_chunks use compute_hash to identify changed chunks?",
+    "relevant_chunks": [
+      "diff_chunks",
+      "compute_hash"
+    ]
+  },
+  {
+    "query": "What fields are available in the RankedChunk data holder?",
+    "relevant_chunks": [
+      "RankedChunk"
+    ]
+  },
+  {
+    "query": "How do I instantiate an IncrementalIndexResult and what are its initial counter values?",
+    "relevant_chunks": [
+      "IncrementalIndexResult.__init__",
+      "IncrementalIndexResult"
+    ]
+  }
+]

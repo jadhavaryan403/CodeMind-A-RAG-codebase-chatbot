@@ -1,0 +1,1948 @@
+{
+  "summary": {
+    "total_queries": 90,
+    "recall": 0.8767,
+    "mrr": 0.8165,
+    "hit_rate": 0.9889
+  },
+  
+  "results": [
+    {
+      "query": "What is the purpose of the ApiConfig class?",
+      "expected_chunks": [
+        "ApiConfig"
+      ],
+      "retrieved_chunks": [
+        "ApiConfig",
+        "ApiConfig",
+        "RagCoreConfig",
+        "RagCoreConfig",
+        "GithubFile"
+      ],
+      "answer": "The `ApiConfig` class is a Django application configuration class. By inheriting from `AppConfig`, it tells Django how to configure the **api** app. It sets the default type for automatically\u2011created primary keys (`default_auto_field = \"django.db.models.BigAutoField\"`) and registers the app\u2019s label (`name = \"api\"`). In short, `ApiConfig` defines the configuration metadata for the `api` Django app.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1005,
+        "completion_tokens": 218
+      }
+    },
+    {
+      "query": "Which model does the UploadedFileSerializer correspond to and which fields are serialized?",
+      "expected_chunks": [
+        "UploadedFileSerializer",
+        "Meta"
+      ],
+      "retrieved_chunks": [
+        "UploadedFileSerializer",
+        "Meta",
+        "Meta",
+        "Meta",
+        "Meta"
+      ],
+      "answer": "The `UploadedFileSerializer` is tied to the **`UploadedFile`** model. It serializes the following fields:\n\n```python\nfields = [\n    \"id\",\n    \"original_filename\",\n    \"file_size_bytes\",\n    \"uploaded_at\",\n]\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1056,
+        "completion_tokens": 207
+      }
+    },
+    {
+      "query": "How does ConversationSerializer compute the number of messages in a conversation?",
+      "expected_chunks": [
+        "ConversationSerializer",
+        "ConversationSerializer.get_message_count"
+      ],
+      "retrieved_chunks": [
+        "ConversationSerializer",
+        "ConversationListSerializer",
+        "ConversationDetailView.get",
+        "ConversationListCreateView",
+        "ConversationListCreateView.get"
+      ],
+      "answer": "The `ConversationSerializer` defines a `message_count` field as a `SerializerMethodField`. The corresponding method `get_message_count(self, obj)` simply returns `obj.messages.count()`, i.e., it calls the Django related\u2011manager `messages` on the `Conversation` instance and uses the ORM\u2019s `count()` method to compute how many `Message` objects are linked to that conversation.",
+      "hit": true,
+      "recall": 0.5,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1470,
+        "completion_tokens": 219
+      }
+    },
+    {
+      "query": "What fields are exposed by the MessageSerializer?",
+      "expected_chunks": [
+        "MessageSerializer",
+        "Meta"
+      ],
+      "retrieved_chunks": [
+        "ConversationSerializer",
+        "MessageSerializer",
+        "ConversationListSerializer",
+        "Meta",
+        "ProjectSerializer"
+      ],
+      "answer": "The `MessageSerializer` exposes the following fields:\n\n```python\nfields = [\"id\", \"role\", \"content\", \"cited_chunks\", \"created_at\"]\n```\nThese are the fields included in the serializer (and they are also marked as read\u2011only).",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 1231,
+        "completion_tokens": 215
+      }
+    },
+    {
+      "query": "How can I retrieve the content of the last message in a conversation using the serializers?",
+      "expected_chunks": [
+        "ConversationListSerializer",
+        "ConversationListSerializer.get_last_message"
+      ],
+      "retrieved_chunks": [
+        "ConversationListSerializer",
+        "ConversationListSerializer.get_last_message",
+        "Meta",
+        "ConversationSerializer",
+        "ConversationSerializer.get_message_count"
+      ],
+      "answer": "Add a `SerializerMethodField` to the serializer and implement a method that fetches the last message from the conversation\u2019s `messages` related manager. For example:\n\n```python\nclass ConversationListSerializer(serializers.ModelSerializer):\n    \"\"\"Lightweight serializer for the sidebar list \u2013 no messages included.\"\"\"\n    message_count = serializers.SerializerMethodField()\n    last_message  = serializers.SerializerMethodField()  # <\u2011\u2011 field that will hold the content\n\n    class Meta:\n        model  = Conversation\n        fields = [\"id\", \"title\", \"message_count\", \"last_message\", \"created_at\", \"updated_at\"]\n\n    def get_message_count(self, obj):\n        return obj.messages.count()\n\n    def get_last_message(self, obj):\n        # `messages` is the reverse FK manager on Conversation\n        msg = obj.messages.last()               # get the most recent Message instance\n        return msg.content[:80] if msg else None  # return its content (truncated here)\n```\n\n* `last_message = serializers.SerializerMethodField()` tells DRF to call a method named `get_last_message` for each instance.\n* Inside `get_last_message`, `obj.messages.last()` retrieves the latest `Message` (ordered by the model\u2019s default ordering, usually by `created_at`).\n* The method then returns the `content` attribute of that message \u2013 you can return the full text or slice it as shown.\n\nWith this serializer, when you serialize a `Conversation` instance, the JSON output will include a `last_message` key containing the content of the most recent message.\n\nIf you need the full content without truncation, simply return `msg.content` instead of `msg.content[:80]`.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1161,
+        "completion_tokens": 520
+      }
+    },
+    {
+      "query": "What is the default primary key type set for the rag_core app?",
+      "expected_chunks": [
+        "RagCoreConfig"
+      ],
+      "retrieved_chunks": [
+        "RagCoreConfig",
+        "RagCoreConfig",
+        "Migration",
+        "Migration",
+        "Migration"
+      ],
+      "answer": "The `RagCoreConfig` sets `default_auto_field = \"django.db.models.BigAutoField\"`, so the default primary key type for the **rag_core** app is **BigAutoField** (`django.db.models.BigAutoField`).",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1409,
+        "completion_tokens": 195
+      }
+    },
+    {
+      "query": "How does the QuerySerializer validate incoming query strings?",
+      "expected_chunks": [
+        "QuerySerializer"
+      ],
+      "retrieved_chunks": [
+        "QuerySerializer",
+        "ConversationStreamView.post",
+        "retrieve",
+        "EvaluationResult",
+        "register_view"
+      ],
+      "answer": "The `QuerySerializer` is a simple Django\u2011REST\u2011Framework serializer that defines a single field:\n\n```python\nclass QuerySerializer(serializers.Serializer):\n    query = serializers.CharField(min_length=3, max_length=1000)\n```\n\nThe `serializers.CharField` automatically validates the incoming value when `serializer.is_valid()` (or `serializer.is_valid(raise_exception=True)`) is called. The validation rules are:\n\n* **Minimum length** \u2013 the string must be at least\u202f3 characters long (`min_length=3`).\n* **Maximum length** \u2013 the string may be at most\u202f1000 characters long (`max_length=1000`).\n\nIf the submitted `query` does not satisfy these constraints, `serializer.is_valid()` will return `False` (or raise a `ValidationError` when `raise_exception=True` is used), and the view can return an appropriate error response. Thus, the serializer ensures that only query strings within the allowed length range are accepted before the view proceeds with further processing.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2428,
+        "completion_tokens": 383
+      }
+    },
+    {
+      "query": "What model does the ProjectSerializer work with and how can its fields be customized?",
+      "expected_chunks": [
+        "ProjectSerializer",
+        "Meta"
+      ],
+      "retrieved_chunks": [
+        "ProjectSerializer",
+        "UploadedFileSerializer",
+        "ProjectListCreateView",
+        "ProjectListCreateView.get",
+        "Meta"
+      ],
+      "answer": "The **`ProjectSerializer`** is tied to the **`Project`** model, as indicated by the line `model = Project` in its `Meta` class. \n\nYou can customize which attributes of the `Project` model are exposed by the serializer through the `fields` attribute, and you can mark specific fields as read\u2011only using the `read_only_fields` attribute. For example, in the provided code:\n\n```python\nclass ProjectSerializer(serializers.ModelSerializer):\n    class Meta:\n        model  = Project\n        fields = [\"id\", \"name\", \"description\", \"status\", \"error_message\",\n                  \"created_at\", \"updated_at\", \"github_url\"]\n        read_only_fields = [\"id\", \"status\", \"error_message\", \"created_at\", \"updated_at\"]\n```\n\n- **`fields`** lists all model fields that should be included in the serialized representation. You can add or remove field names here to customize the output.\n- **`read_only_fields`** marks certain fields as immutable when creating or updating instances via the serializer; they will be included in responses but ignored on input.\n\nBy adjusting these two lists, you control which model attributes are serialized and which are editable.\n",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1240,
+        "completion_tokens": 404
+      }
+    },
+    {
+      "query": "What is the difference between ConversationSerializer and ConversationListSerializer in terms of fields and computed properties?",
+      "expected_chunks": [
+        "ConversationSerializer",
+        "ConversationSerializer.get_message_count",
+        "ConversationListSerializer",
+        "ConversationListSerializer.get_message_count",
+        "ConversationListSerializer.get_last_message"
+      ],
+      "retrieved_chunks": [
+        "ConversationListSerializer",
+        "ConversationSerializer",
+        "ConversationListCreateView",
+        "MessageSerializer",
+        "ConversationDetailView.get"
+      ],
+      "answer": "Both serializers are for the `Conversation` model, but they expose different fields and computed properties:\n\n**`ConversationSerializer`** (used for detailed view / create responses)\n- **Fields**: `id`, `title`, `message_count`, `messages`, `created_at`, `updated_at`\n- **Computed properties**: `message_count` is provided via a `SerializerMethodField` (`get_message_count`).\n- **Nested data**: Includes a full list of related `Message` objects via `messages` (using `MessageSerializer`).\n\n**`ConversationListSerializer`** (used for the sidebar list view)\n- **Fields**: `id`, `title`, `message_count`, `last_message`, `created_at`, `updated_at`\n- **Computed properties**: \n  - `message_count` \u2013 same `SerializerMethodField` as above.\n  - `last_message` \u2013 another `SerializerMethodField` that returns the content of the most recent message (truncated to 80 characters).\n- **No nested messages**: It does **not** include the full `messages` list, making it a lightweight serializer for list displays.\n\nIn summary, `ConversationSerializer` provides the full conversation data including all messages, while `ConversationListSerializer` is a slimmer representation that only shows basic metadata plus a computed `last_message` preview.",
+      "hit": true,
+      "recall": 0.4,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1443,
+        "completion_tokens": 527
+      }
+    },
+    {
+      "query": "Is there a way to make the MessageSerializer read\u2011only for certain fields?",
+      "expected_chunks": [
+        "MessageSerializer",
+        "Meta"
+      ],
+      "retrieved_chunks": [
+        "ConversationSerializer",
+        "MessageSerializer",
+        "Meta",
+        "ConversationListSerializer",
+        "ProjectSerializer"
+      ],
+      "answer": "Yes. In a DRF `ModelSerializer` you control which fields are read\u2011only via the `read_only_fields` option (or by setting `read_only=True` on individual field definitions). In the current `MessageSerializer` all fields are read\u2011only because it does:\n```python\nread_only_fields = fields\n```\nTo make only specific fields read\u2011only, replace that line with a list of the field names you want to protect, e.g.:\n```python\nclass MessageSerializer(serializers.ModelSerializer):\n    class Meta:\n        model = Message\n        fields = [\"id\", \"role\", \"content\", \"cited_chunks\", \"created_at\"]\n        # Only these fields will be read\u2011only; the others can be written to.\n        read_only_fields = [\"id\", \"created_at\"]\n```\nAlternatively, you can declare a field explicitly with `read_only=True`:\n```python\nclass MessageSerializer(serializers.ModelSerializer):\n    role = serializers.CharField(read_only=True)\n    \n    class Meta:\n        model = Message\n        fields = [\"id\", \"role\", \"content\", \"cited_chunks\", \"created_at\"]\n        read_only_fields = [\"id\", \"created_at\"]\n```\nBoth approaches let you keep most fields writable while protecting the ones you list as read\u2011only.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 1238,
+        "completion_tokens": 532
+      }
+    },
+    {
+      "query": "What fields are included in the serializer defined by Meta?",
+      "expected_chunks": [
+        "Meta"
+      ],
+      "retrieved_chunks": [
+        "ConversationListSerializer",
+        "MessageSerializer",
+        "ConversationSerializer",
+        "ProjectSerializer",
+        "Meta"
+      ],
+      "answer": "The `Meta` class specifies the following fields for the serializer:\n\n```text\n\"id\"\n\"role\"\n\"content\"\n\"cited_chunks\"\n\"created_at\"\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.2,
+      "usage": {
+        "prompt_tokens": 2978,
+        "completion_tokens": 886
+      }
+    },
+    {
+      "query": "How does login_view handle missing credentials?",
+      "expected_chunks": [
+        "login_view"
+      ],
+      "retrieved_chunks": [
+        "login_view",
+        "GithubRepoInfoView",
+        "GithubImportView",
+        "GithubImportFilesView",
+        "FileUploadView"
+      ],
+      "answer": "The `login_view` function first extracts the `username` and `password` from the request data. It then checks whether either value is missing or empty:\n\n```python\nif not username or not password:\n    return Response(\n        {'error': 'Username and password are required.'},\n        status=status.HTTP_400_BAD_REQUEST,\n    )\n```\n\nIf either the username or password is absent, the function immediately returns a **400 Bad Request** response with an error message indicating that both fields are required. This prevents any further authentication logic from running when credentials are incomplete.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 3714,
+        "completion_tokens": 230
+      }
+    },
+    {
+      "query": "Which HTTP method does ProjectListCreateView support for creating a new project?",
+      "expected_chunks": [
+        "ProjectListCreateView.post"
+      ],
+      "retrieved_chunks": [
+        "ProjectListCreateView",
+        "ConversationListCreateView",
+        "ProjectListCreateView.get",
+        "ProjectListCreateView.post",
+        "ConversationListCreateView.post"
+      ],
+      "answer": "The `ProjectListCreateView` uses the **POST** HTTP method to create a new project.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.25,
+      "usage": {
+        "prompt_tokens": 1555,
+        "completion_tokens": 134
+      }
+    },
+    {
+      "query": "Which view renders the frontend.html template?",
+      "expected_chunks": [
+        "frontend_view"
+      ],
+      "retrieved_chunks": [
+        "frontend_view",
+        "GithubImportView",
+        "GithubImportFilesView",
+        "IndexFilesView",
+        "ConversationStreamView"
+      ],
+      "answer": "The view that renders the `frontend.html` template is the `frontend_view` function:\n```python\ndef frontend_view(request):\n    return render(request, \"frontend.html\")\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 3927,
+        "completion_tokens": 203
+      }
+    },
+    {
+      "query": "Describe the validation steps performed by register_view before creating a new user.",
+      "expected_chunks": [
+        "register_view"
+      ],
+      "retrieved_chunks": [
+        "register_view",
+        "ProjectListCreateView.post",
+        "ProjectListCreateView",
+        "ConversationListCreateView",
+        "login_view"
+      ],
+      "answer": "The `register_view` function validates the incoming data in several stages before it ever creates a `User`:\n\n1. **Extract and trim input values** \u2013 It pulls `username`, `email`, `password` and `password2` from `request.data` and strips whitespace where appropriate.\n\n2. **Initialize an `errors` dictionary** \u2013 All validation problems are collected here so they can be returned together.\n\n3. **Username checks**\n   * Must be present.\n   * Length must be between 3 and 30 characters.\n   * May only contain alphanumeric characters, underscores (`_`) or hyphens (`-`).\n   * Must be unique (case\u2011insensitive) \u2013 the code queries `User.objects.filter(username__iexact=username).exists()`.\n\n4. **Email check** \u2013 If an email is supplied, it must not already belong to another user (`User.objects.filter(email__iexact=email).exists()`).\n\n5. **Password checks**\n   * Must be present.\n   * Must be at least 8 characters long.\n\n6. **Password confirmation (`password2`)**\n   * Must be present.\n   * Must match the original `password` value.\n\n7. **Error handling** \u2013 If any of the above checks add entries to the `errors` dict, the function logs a warning and returns a `400 BAD REQUEST` response containing the error details.\n\nOnly when **no errors** are recorded does the function proceed to create the user and issue a token.\n\nThese steps ensure that the username, email, and password meet the required format and uniqueness constraints before a new user account is created.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2028,
+        "completion_tokens": 471
+      }
+    },
+    {
+      "query": "After a successful file upload via FileUploadView.post, what changes are made to the project's status?",
+      "expected_chunks": [
+        "FileUploadView.post"
+      ],
+      "retrieved_chunks": [
+        "FileUploadView.post",
+        "FileUploadView",
+        "GithubImportView.post",
+        "GithubImportView",
+        "ReindexView"
+      ],
+      "answer": "In `FileUploadView.post`, the view first sets the project's status to `Project.Status.INDEXING` before it starts processing the uploaded files. After the files are saved, parsed into chunks, explanations are generated, and the FAISS index is built successfully, the code updates the project again:\n\n```python\nproject.status        = Project.Status.READY\nproject.error_message = \"\"\nproject.save(update_fields=[\"status\", \"error_message\"])\n```\n\nSo, after a successful upload and indexing, the project's status changes from `INDEXING` to `READY` (and any previous error message is cleared).",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 5239,
+        "completion_tokens": 365
+      }
+    },
+    {
+      "query": "How does ProjectFilesView.get ensure that only the owner can access the files?",
+      "expected_chunks": [
+        "ProjectFilesView.get"
+      ],
+      "retrieved_chunks": [
+        "ProjectFilesView",
+        "ProjectListCreateView.get",
+        "ProjectFilesView.get",
+        "ProjectListCreateView",
+        "FileUploadView"
+      ],
+      "answer": "The `ProjectFilesView.get` method first retrieves the project with:\n```python\nproject = get_object_or_404(Project, pk=project_id, owner=request.user)\n```\n`get_object_or_404` queries the `Project` model for a record whose primary key matches `project_id` **and** whose `owner` field matches the currently authenticated user (`request.user`). If no such project exists\u2014e.g., the user is not the owner\u2014a 404 response is raised, preventing further execution. By filtering on `owner=request.user`, the view guarantees that only the project\u2019s owner can list its uploaded files.\n\nAfter the project is successfully fetched, the view returns the files belonging to that project:\n```python\nfiles = project.files.all().order_by(\"-uploaded_at\")\nreturn Response(UploadedFileSerializer(files, many=True).data)\n```\nThus, the ownership check is enforced at the very start of the request handling, ensuring that non\u2011owners cannot access the files.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.3333,
+      "usage": {
+        "prompt_tokens": 2082,
+        "completion_tokens": 348
+      }
+    },
+    {
+      "query": "What is the sequence of operations when a client requests the list of projects using ProjectListCreateView.get?",
+      "expected_chunks": [
+        "ProjectListCreateView.get"
+      ],
+      "retrieved_chunks": [
+        "ProjectListCreateView.get",
+        "ProjectListCreateView",
+        "ProjectFilesView",
+        "ConversationListCreateView",
+        "ConversationListCreateView.get"
+      ],
+      "answer": "When a client sends a **GET** request to `/api/projects/`, the `ProjectListCreateView.get` method is executed. The sequence of operations is:\n\n1. **Authenticate the request** \u2013 `request.user` contains the authenticated user (handled by Django/DRF before the view runs).\n2. **Query the database** \u2013 `Project.objects.filter(owner=request.user)` retrieves all `Project` instances whose `owner` field matches the current user.\n3. **Serialize the queryset** \u2013 `ProjectSerializer(projects, many=True).data` converts the list of `Project` objects into a JSON\u2011serializable representation. The `many=True` flag tells the serializer that it is dealing with a collection.\n4. **Return the response** \u2013 `Response(... )` wraps the serialized data in a DRF `Response` object, which is then sent back to the client as the HTTP response body (typically with status\u202f200).\n\nSo the flow is: **GET request \u2192 view method \u2192 DB filter \u2192 serialization \u2192 HTTP response**.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1496,
+        "completion_tokens": 426
+      }
+    },
+    {
+      "query": "Explain how ConversationListCreateView.get fetches conversations for a given project.",
+      "expected_chunks": [
+        "ConversationListCreateView.get"
+      ],
+      "retrieved_chunks": [
+        "ConversationListCreateView",
+        "ConversationDetailView",
+        "ConversationListCreateView.get",
+        "ConversationDetailView.get",
+        "ProjectListCreateView"
+      ],
+      "answer": "The `ConversationListCreateView.get` method retrieves the conversations belonging to a specific project in three main steps:\n\n1. **Locate the project** \u2013 It calls `get_object_or_404(Project, pk=project_id, owner=request.user)`. This query looks up a `Project` instance whose primary key matches the `project_id` URL parameter **and** whose `owner` is the currently authenticated user. If no such project exists, Django returns a 404 response.\n\n2. **Fetch the related conversations** \u2013 Once the `Project` instance is obtained, the view accesses the reverse relationship `project.conversations`. Assuming the `Conversation` model has a `ForeignKey` to `Project` with `related_name='conversations'`, `project.conversations.all()` returns a queryset containing all `Conversation` objects linked to that project.\n\n3. **Serialize and return the data** \u2013 The queryset is passed to `ConversationListSerializer(convs, many=True)`, which converts each `Conversation` object into a JSON\u2011serializable representation (including any extra fields such as message counts). The serializer\u2019s `.data` attribute is then wrapped in a DRF `Response` object and sent back to the client.\n\nIn summary, the method first validates the project belongs to the requesting user, then uses the ORM reverse relation to collect all its conversations, and finally serializes the list for the API response.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.3333,
+      "usage": {
+        "prompt_tokens": 1647,
+        "completion_tokens": 459
+      }
+    },
+    {
+      "query": "What does logout_view do with the user's authentication tokens?",
+      "expected_chunks": [
+        "logout_view"
+      ],
+      "retrieved_chunks": [
+        "logout_view",
+        "login_view",
+        "register_view",
+        "TokenTrackingCallback.__init__",
+        "GithubImportView"
+      ],
+      "answer": "The `logout_view` logs out the current user by deleting their authentication token(s). It calls `Token.objects.filter(user=request.user).delete()`, which removes any `Token` records associated with the requesting user, effectively revoking their authentication. After deleting the token, it logs the logout event and returns a success response.\n\n```python\nToken.objects.filter(user=request.user).delete()\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2738,
+        "completion_tokens": 225
+      }
+    },
+    {
+      "query": "What default title is assigned when creating a new conversation without providing a title?",
+      "expected_chunks": [
+        "ConversationListCreateView.post"
+      ],
+      "retrieved_chunks": [
+        "ConversationListCreateView.post",
+        "ConversationDetailView.patch",
+        "ConversationListCreateView",
+        "Conversation",
+        "ConversationDetailView"
+      ],
+      "answer": "When a new conversation is created without providing a title, the code falls back to the default title **\"New Chat\"** (see the `post` method where `title = request.data.get(\"title\", \"New Chat\").strip() or \"New Chat\"`).",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1685,
+        "completion_tokens": 232
+      }
+    },
+    {
+      "query": "Which HTTP method is used to rename an existing conversation?",
+      "expected_chunks": [
+        "ConversationDetailView.patch"
+      ],
+      "retrieved_chunks": [
+        "ConversationDetailView.patch",
+        "ConversationDetailView",
+        "ConversationListCreateView.post",
+        "ConversationDetailView.delete",
+        "ConversationDetailView.get"
+      ],
+      "answer": "The rename operation is implemented in the `patch` method of the `ConversationDetailView`. Therefore, the HTTP method used to rename an existing conversation is **PATCH**.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1458,
+        "completion_tokens": 178
+      }
+    },
+    {
+      "query": "Can you outline the sequence of operations performed by the GET endpoint for a conversation, including any helper methods it invokes?",
+      "expected_chunks": [
+        "ConversationDetailView.get",
+        "ConversationDetailView._get_conv"
+      ],
+      "retrieved_chunks": [
+        "ConversationDetailView",
+        "ConversationDetailView.get",
+        "ConversationListSerializer.get_last_message",
+        "ConversationStreamView.post",
+        "get_force_answer_chain"
+      ],
+      "answer": "When a client calls **GET /api/conversations/<id>/** the following steps are executed:\n\n1. **`ConversationDetailView.get(request, conv_id)`** is invoked.\n2. Inside `get`, the helper method **`self._get_conv(request, conv_id)`** is called.\n   - `_get_conv` runs:\n     ```python\n     return get_object_or_404(\n         Conversation, pk=conv_id, project__owner=request.user\n     )\n     ```\n   - It attempts to fetch a `Conversation` whose primary key matches `conv_id` **and** whose related `project` is owned by the requesting user. If no such object exists, a 404 response is raised.\n3. The retrieved `Conversation` instance (`conv`) is passed to **`ConversationSerializer(conv)`** to convert the model into a JSON\u2011serializable representation.\n4. The serialized data (`ConversationSerializer(conv).data`) is wrapped in a **`Response`** object and returned to the client.\n\nSo the GET endpoint\u2019s flow is:\n- Call `get` \u2192 call `_get_conv` \u2192 fetch conversation (or 404) \u2192 serialize with `ConversationSerializer` \u2192 return `Response` with the serialized data.\n\nThis sequence relies on the helper `_get_conv` and the `ConversationSerializer` defined elsewhere in the project.",
+      "hit": true,
+      "recall": 0.5,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 2139,
+        "completion_tokens": 549
+      }
+    },
+    {
+      "query": "How does the server stream the assistant's answer for a conversation using Server\u2011Sent Events?",
+      "expected_chunks": [
+        "ConversationStreamView.post"
+      ],
+      "retrieved_chunks": [
+        "ConversationStreamView",
+        "ConversationStreamView.post",
+        "event_stream",
+        "ConversationDetailView.get",
+        "stream_answer"
+      ],
+      "answer": "When a client POSTs to **/api/conversations/<id>/stream/** the view `ConversationStreamView.post` creates a **StreamingHttpResponse** that sends the assistant\u2019s answer as a Server\u2011Sent Events (SSE) stream.\n\n1. **Setup** \u2013 The view fetches the `Conversation` and its `Project`, checks that the project is ready, validates the incoming JSON with `QuerySerializer`, and extracts the user\u2019s `query`.\n2. **Short\u2011term memory** \u2013 It loads the last few turns (`SHORT_TERM_MEMORY_TURNS * 2` messages) from the database, builds a `chat_history` list of `{role, content}` dicts, and stores the new user message in the `Message` table.\n3. **Collector** \u2013 A dictionary `collected` is created to accumulate the final answer text, cited chunks, and token usage while the stream is running.\n4. **`event_stream` generator** \u2013\n   ```python\n   def event_stream():\n       for event in stream_answer(query, request.user.id, project.pk, chat_history):\n           if event.startswith(\"\"):\n               payload = json.loads(event[6:])\n               if payload[\"type\"] == \"metadata\":\n                   collected[\"cited_chunks\"] = payload[\"cited_chunks\"]\n               elif payload[\"type\"] == \"done\":\n                   collected[\"full_text\"] = payload[\"full_text\"]\n                   usage = payload.get(\"usage\", {})\n                   collected[\"usage\"][\"prompt_tokens\"] = usage.get(\"prompt_tokens\", 0)\n                   collected[\"usage\"][\"completion_tokens\"] = usage.get(\"completion_tokens\", 0)\n           yield event\n   ```\n   The generator forwards every SSE chunk produced by `stream_answer`. When a **metadata** event arrives it stores the cited chunks; when a **done** event arrives it stores the complete answer and token usage.\n5. **After the stream ends** \u2013 Once `event_stream` finishes (i.e., after the `done` event), the code creates an `Message` of role `ASSISTANT` with the collected answer, cited chunks, and token counts. If this is the first real exchange in a new conversation, it also updates the conversation title with the first part of the user query.\n6. **Response** \u2013 The view returns:\n   ```python\n   response = StreamingHttpResponse(event_stream(), content_type=\"text/event-stream\")\n   response[\"Cache-Control\"] = \"no-cache\"\n   response[\"X-Accel-Buffering\"] = \"no\"\n   response[\"Access-Control-Allow-Origin\"] = \"*\"\n   return response\n   ```\n   The `StreamingHttpResponse` streams the events to the client in real\u2011time, using the `text/event-stream` MIME type required for SSE.\n\nIn summary, the server streams the assistant\u2019s answer by delegating the generation to `stream_answer`, forwarding each SSE chunk through a generator (`event_stream`), collecting the final answer and metadata, persisting the assistant message, and finally returning a `StreamingHttpResponse` with the appropriate SSE headers.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 4232,
+        "completion_tokens": 920
+      }
+    },
+    {
+      "query": "What validation does GithubRepoInfoView perform on the incoming request before calling the external function to fetch repository information, and which function is called?",
+      "expected_chunks": [
+        "GithubRepoInfoView.post"
+      ],
+      "retrieved_chunks": [
+        "GithubRepoInfoView",
+        "GithubRepoInfoView.post",
+        "fetch_github_repo",
+        "GithubImportView",
+        "ReindexView"
+      ],
+      "answer": "The `GithubRepoInfoView` validates that the request body contains a non\u2011empty `url` field. It retrieves the value with `request.data.get('url', '').strip()` and, if the resulting string is empty, returns a `400` response with an error message (`{'error': 'URL is required.'}`). Only after this check does it call the external function `get_repo_info(url)` to fetch the repository metadata.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 3395,
+        "completion_tokens": 310
+      }
+    },
+    {
+      "query": "What response does GithubImportView give when the request payload lacks a GitHub URL?",
+      "expected_chunks": [
+        "GithubImportView.post"
+      ],
+      "retrieved_chunks": [
+        "_api_get",
+        "GithubRepoInfoView",
+        "GithubRepoInfoView.post",
+        "_fetch_file_content",
+        "GithubImportFilesView"
+      ],
+      "answer": "When the request payload does not include a GitHub URL, `GithubImportFilesView` (the import view) returns a **400 Bad Request** response with a JSON body:\n```json\n{ \"error\": \"GitHub URL is required.\" }\n```",
+      "hit": false,
+      "recall": 0.0,
+      "reciprocal_rank": 0,
+      "usage": {
+        "prompt_tokens": 2126,
+        "completion_tokens": 275
+      }
+    },
+    {
+      "query": "How does GithubImportFilesView verify that at least one Python file was retrieved from the repository and how does it update the project's GitHub metadata?",
+      "expected_chunks": [
+        "GithubImportFilesView.post",
+        "GithubImportFilesView"
+      ],
+      "retrieved_chunks": [
+        "GithubImportFilesView.post",
+        "GithubImportFilesView",
+        "fetch_github_repo",
+        "GithubFile",
+        "GithubImportView.post"
+      ],
+      "answer": "In `GithubImportFilesView.post` the view first calls `fetch_github_repo(url)` to retrieve the list of Python files.  Immediately after the call it checks the result:\n\n```python\nif not github_files:\n    return Response({'error': 'No Python files found.'}, status=400)\n```\n\nIf the list is empty (i.e., no ``.py`` files were found), the view returns a 400 response, so the request only proceeds when at least one Python file has been fetched.\n\nOnce the presence of files is confirmed, the view updates the project's GitHub\u2011related metadata:\n\n1. **Store the URL** \u2013 `project.github_url = url`\n2. **Set the project status** \u2013 initially to `Project.Status.PENDING` (in the basic import view) and later to `Project.Status.INDEXING` when the indexing step begins (in the extended view that also builds a FAISS index).\n3. **Persist the changes** \u2013 `project.save(update_fields=['github_url', 'status'])` (or a later `project.save(update_fields=['status', 'github_url'])`).\n\nThus, the view both validates that at least one Python file was retrieved and records the repository URL and appropriate status on the `Project` instance.\n",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 3470,
+        "completion_tokens": 594
+      }
+    },
+    {
+      "query": "After a successful import of files via GithubImportView, what status is set on the project?",
+      "expected_chunks": [
+        "GithubImportView.post"
+      ],
+      "retrieved_chunks": [
+        "GithubImportView",
+        "GithubImportView.post",
+        "ReindexView.post",
+        "GithubImportFilesView",
+        "ReindexView"
+      ],
+      "answer": "After a successful import using `GithubImportView`, the project\u2019s status is set to `Project.Status.READY`.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 4679,
+        "completion_tokens": 220
+      }
+    },
+    {
+      "query": "When IndexFilesView starts indexing, what are the steps taken to read each uploaded file and prepare it for indexing?",
+      "expected_chunks": [
+        "IndexFilesView"
+      ],
+      "retrieved_chunks": [
+        "IndexFilesView",
+        "FileUploadView",
+        "FileUploadView.post",
+        "GithubImportView",
+        "IndexFilesView.post"
+      ],
+      "answer": "When `IndexFilesView` begins the indexing process (the `post` method), it follows these steps for each uploaded file:\n\n1. **Retrieve the uploaded file records** \u2013 It queries `UploadedFile.objects.filter(project=project)` to get all files that belong to the project.\n2. **Build the absolute disk path** \u2013 For each `UploadedFile` instance `f`, it constructs the full path on disk with:\n   ```python\n   disk_path = str(settings.UPLOAD_ROOT / f.stored_path)\n   ```\n3. **Determine a stable original path** \u2013 It picks a stable identifier for the file, preferring a previously stored `original_path` (if the file was re\u2011imported) or falling back to the original filename:\n   ```python\n   original_path = f.original_path or f.original_filename\n   ```\n4. **Parse the file into chunks** \u2013 It calls the helper `chunk_file(disk_path)` which parses the Python source into a list of structured code\u2011chunk objects. Any exception while parsing is caught and the file is skipped.\n5. **Attach the original path to each chunk** \u2013 For every chunk returned, it sets `chunk.original_path = original_path` so later diffing can match chunks across re\u2011imports.\n6. **Collect all chunks** \u2013 The chunks from the current file are added to the master list `all_chunks` with `all_chunks.extend(chunks)`.\n\nAfter iterating over all uploaded files, `all_chunks` contains the parsed, path\u2011annotated chunks ready for the next stages (explanation generation, validation, and FAISS indexing).",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 4995,
+        "completion_tokens": 529
+      }
+    },
+    {
+      "query": "Which method handles deleting a conversation and what permission checks are performed before the deletion occurs?",
+      "expected_chunks": [
+        "ConversationDetailView.delete",
+        "ConversationDetailView._get_conv"
+      ],
+      "retrieved_chunks": [
+        "ConversationDetailView.delete",
+        "ConversationDetailView",
+        "logout_view",
+        "ConversationListCreateView",
+        "ConversationDetailView._get_conv"
+      ],
+      "answer": "The deletion is performed by the **`delete`** method of the `ConversationDetailView` class:\n```python\nclass ConversationDetailView(APIView):\n    ...\n    def delete(self, request, conv_id: int):\n        \"\"\"Delete a specific conversation.\"\"\"\n        conv = self._get_conv(request, conv_id)\n        conv.delete()\n        return Response(status=status.HTTP_204_NO_CONTENT)\n```\n\nBefore the conversation is actually deleted, the view calls the helper method **`_get_conv`** to fetch the conversation object:\n```python\ndef _get_conv(self, request, conv_id):\n    return get_object_or_404(\n        Conversation, pk=conv_id, project__owner=request.user\n    )\n```\nThe `get_object_or_404` call includes the filter `project__owner=request.user`. This ensures that the conversation is only retrieved (and therefore deletable) if it belongs to a project whose **owner is the requesting user**. If the user is not the owner, a 404 response is raised and the deletion never occurs. Thus, the permission check is that the user must be the owner of the project containing the conversation.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1517,
+        "completion_tokens": 454
+      }
+    },
+    {
+      "query": "What does IndexFilesView.post do with uploaded files before sending them to generate_explanations?",
+      "expected_chunks": [
+        "IndexFilesView.post"
+      ],
+      "retrieved_chunks": [
+        "GithubImportView",
+        "IndexFilesView",
+        "FileUploadView",
+        "FileUploadView.post",
+        "IndexFilesView.post"
+      ],
+      "answer": "The `IndexFilesView.post` method first retrieves the `UploadedFile` records for the project. For each uploaded file it:\n1. Builds the absolute disk path (`disk_path`) to the stored file and determines the stable original path (`original_path`).\n2. Calls `chunk_file(disk_path)` to parse the file into a list of code\u2011chunk objects.\n3. Attaches the `original_path` to each chunk (so later diffing can match chunks across re\u2011imports).\n4. Adds all the resulting chunks to a master `all_chunks` list.\nOnly after this collection and annotation of chunks does it call `generate_explanations_batch(all_chunks)` to produce explanations for indexing.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.2,
+      "usage": {
+        "prompt_tokens": 4991,
+        "completion_tokens": 337
+      }
+    },
+    {
+      "query": "Which view handles re-indexing a project via a POST request?",
+      "expected_chunks": [
+        "ReindexView.post"
+      ],
+      "retrieved_chunks": [
+        "GithubImportView",
+        "ReindexView",
+        "IndexFilesView",
+        "FileUploadView",
+        "GithubImportFilesView"
+      ],
+      "answer": "The view that handles re\u2011indexing a project via a POST request is the **`ReindexView`** class (see `class ReindexView(APIView):`).",
+      "hit": true,
+      "recall": 0.0,
+      "reciprocal_rank": 0,
+      "usage": {
+        "prompt_tokens": 4604,
+        "completion_tokens": 208
+      }
+    },
+    {
+      "query": "How does event_stream extract metadata from streamed answer events?",
+      "expected_chunks": [
+        "event_stream"
+      ],
+      "retrieved_chunks": [
+        "event_stream",
+        "ConversationStreamView.post",
+        "ConversationStreamView",
+        "stream_answer",
+        "ConversationListCreateView.post"
+      ],
+      "answer": "The `event_stream` generator watches each string yielded by `stream_answer`. For every event that begins with the SSE prefix `\"\"`, it strips the prefix, parses the remaining JSON payload, and then looks at the `type` field. When the payload\u2019s `type` is `\"metadata\"`, it copies the `cited_chunks` list from the payload into the `collected[\"cited_chunks\"]` dictionary. When the `type` is `\"done\"`, it extracts the final answer text (`full_text`) and token usage information. In this way, `event_stream` pulls out the metadata (the cited code chunks and usage stats) from the streamed answer events.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 4299,
+        "completion_tokens": 328
+      }
+    },
+    {
+      "query": "What function should I call to retrieve documents for a specific user and project?",
+      "expected_chunks": [
+        "retrieve"
+      ],
+      "retrieved_chunks": [
+        "retrieve",
+        "query_index",
+        "ProjectFilesView",
+        "GithubImportFilesView.post",
+        "ConversationListCreateView.get"
+      ],
+      "answer": "You should call the **`retrieve`** function:\n```python\nretrieve(query: str, user_id: int, project_id: int) -> list\n```\nIt wraps the lower\u2011level `query_index` call and returns a list of LangChain `Document` objects for the given `user_id` and `project_id`.\n",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1754,
+        "completion_tokens": 321
+      }
+    },
+    {
+      "query": "How are documents reranked after retrieval?",
+      "expected_chunks": [
+        "rerank_docs"
+      ],
+      "retrieved_chunks": [
+        "stream_answer",
+        "rerank_docs",
+        "remove_from_faiss",
+        "get_docs_by_faiss_ids",
+        "ReindexView.post"
+      ],
+      "answer": "After the initial retrieval step, the pipeline calls the `rerank_docs` function to reorder the retrieved documents. The function works as follows:\n\n```python\ndef rerank_docs(query: str, documents: list) -> list:\n    \"\"\"Rerank retrieved documents using CrossEncoder.\"\"\"\n    docs = [\n        Document(page_content=doc.page_content, metadata=doc.metadata)\n        for doc in documents\n    ]\n    return rerank(query, docs)[:TOP_K_LLM]  # Keep top K for LLM context\n```\n\n1. **Wrap raw results** \u2013 Each retrieved document is wrapped in a `Document` object containing its content and metadata.\n2. **Cross\u2011encoder scoring** \u2013 The helper `rerank` (a CrossEncoder model) scores each document against the original query, producing a relevance ranking.\n3. **Select top\u2011K** \u2013 Only the highest\u2011scoring `TOP_K_LLM` documents are kept and returned to the pipeline.\n\nThus, documents are reranked by applying a CrossEncoder model to the query\u2011document pairs and then truncating the list to the top\u2011K most relevant results.\n",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 3435,
+        "completion_tokens": 462
+      }
+    },
+    {
+      "query": "What does build_context output and how does it limit the number of chunks?",
+      "expected_chunks": [
+        "build_context"
+      ],
+      "retrieved_chunks": [
+        "build_cited_chunks",
+        "print_final_state",
+        "build_and_save_index",
+        "build_context",
+        "diff_chunks"
+      ],
+      "answer": "The `build_context` function returns a single string that is meant to be used as the prompt for an LLM. For each code chunk in the supplied `ranked` list (up to a maximum of `TOP_K_LLM` chunks), it creates a block like:\n\n```\nChunk i: (one\u2011line\u2011summary)\n```python\n<code>\n```\n\nDependencies:\n<dep1>: <summary>\n<dep2>: <summary>\n```\n```\n\nAll of these blocks are concatenated with a double\u2011newline separator. If there are no chunks, the function returns the literal string \"No relevant code found.\" The number of chunks included is limited by the slice `ranked[:TOP_K_LLM]`, which means only the first `TOP_K_LLM` items from the ranked list are processed.\n",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.25,
+      "usage": {
+        "prompt_tokens": 2620,
+        "completion_tokens": 377
+      }
+    },
+    {
+      "query": "What information does build_cited_chunks include for each ranked object?",
+      "expected_chunks": [
+        "build_cited_chunks"
+      ],
+      "retrieved_chunks": [
+        "build_cited_chunks",
+        "build_context",
+        "build_and_save_index",
+        "print_final_state",
+        "chunk_all_files_with_paths"
+      ],
+      "answer": "The `build_cited_chunks` function creates a list of dictionaries, one for each ranked object, containing the following fields:\n\n- **symbol** \u2013 the object's symbol name (`c.symbol`).\n- **chunk_type** \u2013 the type of code chunk (`c.chunk_type`).\n- **start_line** \u2013 the starting line number of the chunk (`c.start_line`).\n- **end_line** \u2013 the ending line number of the chunk (`c.end_line`).\n- **score** \u2013 the relevance score if present (`getattr(c, \"score\", None)`).\n- **code** \u2013 the actual source code of the chunk (`c.code`).\n\nThese keys provide the frontend with all the metadata and code needed to display the cited chunks.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2322,
+        "completion_tokens": 354
+      }
+    },
+    {
+      "query": "How does get_evaluator_chain construct its prompt chain?",
+      "expected_chunks": [
+        "get_evaluator_chain"
+      ],
+      "retrieved_chunks": [
+        "get_evaluator_chain",
+        "evaluate_and_answer",
+        "get_force_answer_chain",
+        "_get_explainer_chain",
+        "generate_explanation"
+      ],
+      "answer": "The `get_evaluator_chain` function builds the prompt chain in a few steps:\n\n1. **Cache handling** \u2013 It stores the chain in a module\u2011level variable `_evaluator_chain`. If the variable is already set, the cached chain is returned; otherwise a new chain is created.\n\n2. **Prompt creation** \u2013 It constructs a `ChatPromptTemplate` using `ChatPromptTemplate.from_messages`. The template consists of two messages:\n   * A **system** message that contains the full set of instructions for the strict code\u2011assistant/evaluator (the long block that explains the evaluation steps, decision logic, and output format).\n   * A **human** message that formats the runtime inputs with placeholders `{history}`, `{context}`, and `{question}`:\n   ```\n   Conversation history:\n   {history}\n\n   Retrieved code chunks:\n   {context}\n\n   Question: {question}\n   ```\n   These placeholders will be filled with the actual chat history, the ranked code chunks, and the user\u2019s question when the chain is invoked.\n\n3. **LLM binding** \u2013 The prompt template is then piped (`|`) into a base LLM instance obtained via `_get_base_llm()`. The LLM is wrapped with `.with_structured_output(EvaluationResult)` so that the model\u2019s response is parsed into the `EvaluationResult` Pydantic model (containing `sufficient`, `answer`, `rewritten_query`).\n\n4. **Chain assignment** \u2013 The resulting chain (`prompt | _get_base_llm().with_structured_output(EvaluationResult)`) is stored in `_evaluator_chain` and returned.\n\nIn summary, `get_evaluator_chain` lazily creates a cached LangChain chain that combines a two\u2011message prompt (system instructions + human template) with a base LLM configured to output a structured `EvaluationResult`.\n",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2959,
+        "completion_tokens": 573
+      }
+    },
+    {
+      "query": "Explain the singleton pattern used in _get_base_llm.",
+      "expected_chunks": [
+        "_get_base_llm"
+      ],
+      "retrieved_chunks": [
+        "_get_base_llm",
+        "get_evaluator_chain",
+        "get_force_answer_chain",
+        "_get_cross_encoder",
+        "TokenTrackingCallback"
+      ],
+      "answer": "The `_get_base_llm` function implements a classic **singleton pattern** for the LLM instance:\n\n1. **Global cache variable** \u2013 It uses a module\u2011level global variable `_base_llm` to store the created `ChatGroq` object.\n2. **Lazy initialization** \u2013 When the function is called, it checks `if _base_llm is None`. If the variable is still `None`, it means the LLM has not been created yet, so it constructs a new `ChatGroq` instance with the desired configuration (model, API key, temperature) and assigns it to `_base_llm`.\n3. **Subsequent calls return the same object** \u2013 After the first call, `_base_llm` holds the created instance, so later calls skip the creation block and directly return the cached object.\n\nBy doing this, the code ensures that **only one** `ChatGroq` (or `ChatGoogleGenerativeAI` as hinted by the return type) is instantiated for the lifetime of the process, avoiding the overhead of repeatedly creating expensive LLM client objects and guaranteeing a single shared configuration throughout the application.\n\nThis pattern is useful when the underlying resource (here, the LLM client) is costly to create or should maintain a single shared state.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2294,
+        "completion_tokens": 401
+      }
+    },
+    {
+      "query": "If I need to re-index a GitHub project and then answer a query using the top-ranked code snippets, which functions are involved in this workflow?",
+      "expected_chunks": [
+        "ReindexView.post",
+        "retrieve",
+        "rerank_docs",
+        "build_context"
+      ],
+      "retrieved_chunks": [
+        "ReindexView",
+        "ReindexView.post",
+        "GithubImportView",
+        "GithubImportView.post",
+        "stream_answer"
+      ],
+      "answer": "The workflow you described touches two main phases:\n\n**1\ufe0f\u20e3 Re\u2011indexing a GitHub project**\n- `fetch_github_repo` \u2013 pulls all ``.py`` files from the given GitHub URL.\n- `incremental_reindex` \u2013 updates the FAISS index for the project with the newly\u2011saved files (used by the `ReindexView`\u202fPOST handler).\n- (If you use the *GitHub import* endpoint, the same fetch is followed by `chunk_file`, `generate_explanations_batch` and `build_and_save_index` to create the index.)\n\n**2\ufe0f\u20e3 Answering a query with the top\u2011ranked code snippets**\n- `stream_answer` \u2013 the high\u2011level entry point that streams the answer.\n- `retrieve` \u2013 fetches candidate documents from the FAISS store for the query.\n- `rerank_docs` \u2013 re\u2011orders those candidates so the most relevant snippets are first.\n- `evaluate_and_answer` \u2013 looks at the ranked snippets and either returns a final answer, asks for more dependencies, or suggests a query rewrite.\n- (When dependencies are needed, `get_faiss_ids_by_symbols` and `load_index` are used internally, but the core answer\u2011generation path is the four functions above.)\n\nSo, the key functions involved are:\n```\nfetch_github_repo\nincremental_reindex\nstream_answer\nretrieve\nrerank_docs\nevaluate_and_answer\n```",
+      "hit": true,
+      "recall": 0.25,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 5755,
+        "completion_tokens": 769
+      }
+    },
+    {
+      "query": "What does the build_history_text function return when there is no prior conversation?",
+      "expected_chunks": [
+        "build_history_text"
+      ],
+      "retrieved_chunks": [
+        "build_history_text",
+        "force_answer",
+        "ConversationListSerializer.get_last_message",
+        "get_force_answer_chain",
+        "evaluate_and_answer"
+      ],
+      "answer": "When there is no prior conversation (i.e., `chat_history` is empty or falsy), `build_history_text` returns the string:\n```\nNo previous conversation.\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1892,
+        "completion_tokens": 157
+      }
+    },
+    {
+      "query": "How does the normalize function extract the last segment of a dotted string?",
+      "expected_chunks": [
+        "normalize"
+      ],
+      "retrieved_chunks": [
+        "normalize",
+        "normalize",
+        "_extract_source",
+        "sanitise_relative_path",
+        "_validate_explanations"
+      ],
+      "answer": "The `normalize` function splits the input string on the dot (`.`) character using `name.split('.')`, which creates a list of all the segments. It then returns the last element of that list with `[-1]`. This effectively extracts the substring that appears after the final dot in the original dotted string.\n\n```python\ndef normalize(name: str) -> str:\n    return name.split('.')[-1]\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1363,
+        "completion_tokens": 231
+      }
+    },
+    {
+      "query": "Which fields are defined in the Project model?",
+      "expected_chunks": [
+        "Project"
+      ],
+      "retrieved_chunks": [
+        "ProjectSerializer",
+        "Meta",
+        "Project",
+        "Migration",
+        "Meta"
+      ],
+      "answer": "The **Project** model defines the following fields:\n\n```python\nowner         = models.ForeignKey(User, on_delete=models.CASCADE, related_name=\"projects\")\nname          = models.CharField(max_length=255)\ndescription   = models.TextField(blank=True)\nstatus        = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)\nerror_message = models.TextField(blank=True)\ngithub_url    = models.URLField(blank=True)\ncreated_at    = models.DateTimeField(auto_now_add=True)\nupdated_at    = models.DateTimeField(auto_now=True)\n```\n\n(An implicit primary\u2011key field `id` is also added by Django, but it isn\u2019t explicitly declared in the class.)",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.3333,
+      "usage": {
+        "prompt_tokens": 1977,
+        "completion_tokens": 459
+      }
+    },
+    {
+      "query": "What information does Project.__str__ include in its output?",
+      "expected_chunks": [
+        "Project.__str__"
+      ],
+      "retrieved_chunks": [
+        "UploadedFile.__str__",
+        "Project.__str__",
+        "Conversation.__str__",
+        "ChunkIndex.__str__",
+        "Message.__str__"
+      ],
+      "answer": "The `Project.__str__` method returns a string that includes the project owner's username, the project's name, and its status (shown in brackets). It formats the output as:\n```\n{owner.username}/{project.name} [{project.status}]\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 2208,
+        "completion_tokens": 404
+      }
+    },
+    {
+      "query": "How does evaluate_and_answer build the prompt using the chat history and ranked documents?",
+      "expected_chunks": [
+        "evaluate_and_answer",
+        "build_history_text"
+      ],
+      "retrieved_chunks": [
+        "evaluate_and_answer",
+        "force_answer",
+        "get_evaluator_chain",
+        "build_history_text",
+        "get_force_answer_chain"
+      ],
+      "answer": "The `evaluate_and_answer` function constructs the prompt by first converting the recent chat history into a plain\u2011text string with `build_history_text(chat_history)` and turning the list of ranked code chunks into a formatted context string with `build_context(ranked)`. It then calls `get_evaluator_chain().invoke(...)`, passing a dictionary that fills the placeholders in the evaluator chain\u2019s `ChatPromptTemplate`:\n\n```python\n{\n    \"history\": build_history_text(chat_history),   # e.g. \"USER: \u2026\\nASSISTANT: \u2026\"\n    \"context\": build_context(ranked),            # formatted code chunks\n    \"question\": query,                           # the original user query\n}\n```\n\nThe `get_evaluator_chain` template defines two messages:\n1. **System message** \u2013 contains the strict evaluation instructions (the long prompt you see in the code).\n2. **Human message** \u2013 a template string:\n   ```\n   Conversation history:\n   {history}\n\n   Retrieved code chunks:\n   {context}\n\n   Question: {question}\n   ```\n\nWhen `invoke` is called, the placeholders `{history}`, `{context}`, and `{question}` are replaced with the values prepared above, producing the final prompt that is sent to the LLM. This prompt therefore includes the recent conversation, the ranked code snippets, and the user\u2019s question, all wrapped in the system\u2011level instructions that guide the model to evaluate the relevance of the context and either answer or rewrite the query.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2749,
+        "completion_tokens": 538
+      }
+    },
+    {
+      "query": "When the maximum retry limit is reached, which function generates the final answer and what steps does it perform?",
+      "expected_chunks": [
+        "force_answer",
+        "stream_answer"
+      ],
+      "retrieved_chunks": [
+        "force_answer",
+        "get_force_answer_chain",
+        "stream_answer",
+        "print_final_state",
+        "rerank_docs"
+      ],
+      "answer": "When the retry loop in **`stream_answer`** reaches the maximum number of retries (`retry_count >= MAX_RETRIES`), the pipeline falls back to the **`force_answer`** function to produce the final answer.\n\n**Steps performed by `force_answer`**:\n1. **Create a token\u2011tracking callback** \u2013 `TokenTrackingCallback()` is instantiated to record how many tokens are used for the request and response.\n2. **Build the prompt payload** \u2013 It calls `get_force_answer_chain()` to obtain a LangChain `Chain` that contains a prompt template. The chain is invoked with a dictionary containing:\n   * `history`: the formatted chat history (`build_history_text(chat_history)`).\n   * `context`: the ranked code chunks turned into a context string (`build_context(ranked)`).\n   * `question`: the original user query (`original_query`).\n   * `retry_count`: the number of retries that have been attempted.\n3. **Invoke the LLM** \u2013 The chain\u2019s `invoke` method runs the LLM (provided by `_get_base_llm()`) with the assembled inputs, using the token\u2011tracking callback in the `config`.\n4. **Log token usage** \u2013 After the LLM returns, the callback\u2019s token counts are printed:\n   * total tokens, prompt tokens, and completion tokens.\n5. **Return the result** \u2013 The function returns a tuple:\n   * `response.content` \u2013 the text generated by the LLM (the final answer).\n   * `usage` \u2013 a dictionary with `prompt_tokens` and `completion_tokens` (used for downstream accounting).\n6. **Error handling** \u2013 If any exception occurs during the process, the function catches it and returns an error message indicating that answer generation failed, along with a usage dict of zeros.\n\nThus, `force_answer` is the fallback that assembles the best\u2011available context, calls the LLM via a prepared chain, tracks token usage, and returns the generated answer (or an error message) when the retry limit is hit.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 3335,
+        "completion_tokens": 654
+      }
+    },
+    {
+      "query": "How does stream_answer handle multi\u2011hop dependencies and decide when to re\u2011evaluate the generated answer?",
+      "expected_chunks": [
+        "stream_answer",
+        "evaluate_and_answer"
+      ],
+      "retrieved_chunks": [
+        "stream_answer",
+        "ConversationStreamView.post",
+        "event_stream",
+        "ConversationStreamView",
+        "generate_explanations_batch"
+      ],
+      "answer": "The `stream_answer` function implements a multi\u2011hop Retrieval\u2011Augmented Generation (RAG) loop that can request additional code symbols (dependencies) and then re\u2011run the retrieval\u2011rerank\u2011evaluate cycle until it has enough context to answer.\n\n1. **Main loop** \u2013 The function runs inside a `while True` loop.  Each iteration represents one \u201chop\u201d.  The loop tracks `retry_count` and stops after `MAX_RETRIES` (or when a sufficient answer is produced).\n\n2. **Detecting missing dependencies** \u2013 After the current set of retrieved chunks (`ranked`) is sent to `evaluate_and_answer`, the returned `result` may contain a `request_dependencies` field.  When this field is present, the code:\n   ```python\n   if result.request_dependencies:\n       deps = result.request_dependencies.get(\"dependencies\", [])\n   ```\n   extracts the list of symbols that the LLM says are needed to answer the original query.\n\n3. **Fetching the dependencies** \u2013 For each new dependency symbol that has not already been fetched (`used_dependency_symbols`), the function:\n   * Looks up the FAISS IDs for those symbols (`get_faiss_ids_by_symbols`).\n   * Loads the FAISS index (`load_index`).\n   * Retrieves the corresponding documents (`get_docs_by_faiss_ids`).\n   * Reranks those documents (`rerank_docs`).\n   * Merges the newly\u2011ranked dependency chunks with the previously\u2011ranked ones, giving priority to the dependency chunks.\n\n4. **Re\u2011evaluation** \u2013 After the merge, `retry_count` is incremented and the loop `continue`s.  This causes the next iteration to run the **retrieve \u2192 rerank \u2192 evaluate** steps again, now with the expanded `ranked` list that includes the newly\u2011fetched dependency chunks.  The LLM therefore re\u2011evaluates the answer with the richer context.\n\n5. **When to stop** \u2013 The loop stops and returns a final answer when:\n   * `result.sufficient` is `True` and an `answer` is present (case\u202f1).\n   * The maximum number of retries is reached, in which case `force_answer` is called to produce a best\u2011effort answer.\n   * No new dependencies can be fetched (all requested symbols already retrieved), which also triggers a forced answer.\n\n6. **Rewrite handling** \u2013 If `evaluate_and_answer` returns a `rewritten_query` instead of dependencies, the function updates `current_query` with the rewritten version, increments `retry_count`, and loops again, effectively performing a new retrieval with the refined query.\n\nIn summary, `stream_answer` watches the LLM\u2019s `request_dependencies` output, pulls the missing symbols from the FAISS store, merges them with the existing context, and then re\u2011runs the retrieval\u2011rerank\u2011evaluate cycle.  This multi\u2011hop mechanism continues until the LLM signals that the answer is sufficient or the retry limit is hit, at which point the final answer is streamed back to the client.\n",
+      "hit": true,
+      "recall": 0.5,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 4357,
+        "completion_tokens": 884
+      }
+    },
+    {
+      "query": "What does print_final_state display after processing a query?",
+      "expected_chunks": [
+        "print_final_state"
+      ],
+      "retrieved_chunks": [
+        "print_final_state",
+        "stream_answer",
+        "retrieve",
+        "event_stream",
+        "Project.__str__"
+      ],
+      "answer": "The `print_final_state` function prints a formatted summary of the RAG pipeline after a query has been processed. The output looks like this:\n\n```\n============================================================\nFINAL STATE SUMMARY\n============================================================\nOriginal Query    : <the original user query>\nFinal Query       : <the query that was finally used (after any rewrites)>\nRetries Taken     : <number of retrieval/rewrite attempts>\nContext Sufficient: <True/False indicating whether the retrieved context was enough>\nRewrite Reason    : <reason for the last rewrite, shown only if retries > 0>\nChunks Used       : <number of code chunks that were ranked>\nTop Chunk         : <symbol of the highest\u2011scoring chunk> (score=<score>  <file_path>)\nAnswer Length     : <character count of the generated answer>\n============================================================\n```\n\nIn short, it displays the original and final queries, how many retries occurred, whether the context was sufficient, any rewrite reason, how many chunks were considered, details of the top\u2011ranked chunk, and the length of the final answer, all surrounded by a clear header and footer.\n",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 3101,
+        "completion_tokens": 452
+      }
+    },
+    {
+      "query": "How can I retrieve Faiss IDs for a list of symbols using the Django ORM?",
+      "expected_chunks": [
+        "get_faiss_ids_by_symbols",
+        "Migration"
+      ],
+      "retrieved_chunks": [
+        "get_faiss_ids_by_symbols",
+        "ChunkIndex",
+        "get_docs_by_faiss_ids",
+        "Conversation",
+        "Project"
+      ],
+      "answer": "Error evaluating context: Error code: 400 - {'error': {'message': 'Tool choice is required, but model did not call a tool', 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': ''}}",
+      "hit": true,
+      "recall": 0.5,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "query": "What is the relationship between the Project model's status choices and the string representation provided by Project.__str__?",
+      "expected_chunks": [
+        "Project",
+        "Project.__str__"
+      ],
+      "retrieved_chunks": [
+        "Project.__str__",
+        "Project",
+        "ChunkIndex.__str__",
+        "UploadedFile.__str__",
+        "Conversation.__str__"
+      ],
+      "answer": "The `Project` model defines a `Status` enumeration with the choices `pending`, `indexing`, `ready`, and `failed`. The `__str__` method of `Project` builds a human\u2011readable identifier that includes the project's owner username, the project name, and the current status value inside square brackets:\n\n```python\ndef __str__(self):\n    return f\"{self.owner.username}/{self.name} [{self.status}]\"\n```\n\nThus, the string representation directly reflects the project's current status by displaying whichever status choice (`self.status`) is set for that instance. The status shown in the brackets will always be one of the defined `Status` choices.\n",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1225,
+        "completion_tokens": 317
+      }
+    },
+    {
+      "query": "What fields are defined on the UploadedFile model?",
+      "expected_chunks": [
+        "UploadedFile"
+      ],
+      "retrieved_chunks": [
+        "UploadedFileSerializer",
+        "Migration",
+        "Meta",
+        "UploadedFile",
+        "UploadedFile.__str__"
+      ],
+      "answer": "The `UploadedFile` model defines the following fields:\n\n```python\nproject = models.ForeignKey(Project, on_delete=models.CASCADE, related_name=\"files\")\noriginal_filename = models.CharField(max_length=255)   # display only \u2014 never used in paths\noriginal_path = models.CharField(max_length=500, default='')\nstored_path = models.CharField(max_length=512)   # UUID-based, relative to UPLOAD_ROOT\nfile_size_bytes = models.PositiveIntegerField()\nuploaded_at = models.DateTimeField(auto_now_add=True)\n```\n\nThese are the database fields; the `__str__` method is not a field but a string representation of the model instance.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.25,
+      "usage": {
+        "prompt_tokens": 1142,
+        "completion_tokens": 297
+      }
+    },
+    {
+      "query": "How does the __str__ method of UploadedFile format its output?",
+      "expected_chunks": [
+        "UploadedFile.__str__"
+      ],
+      "retrieved_chunks": [
+        "UploadedFile.__str__",
+        "UploadedFile",
+        "ChunkIndex.__str__",
+        "Project.__str__",
+        "FileUploadView.post"
+      ],
+      "answer": "The `__str__` method of the `UploadedFile` model returns a formatted string that combines the file\u2019s original filename with the string representation of its associated project, separated by an arrow. Specifically, it returns:\n\n```python\nf\"{self.original_filename} \u2192 {self.project}\"\n```\n\nSo, when you print an `UploadedFile` instance, you\u2019ll see something like `myfile.py \u2192 MyProject` (where `MyProject` is whatever the `Project` model\u2019s `__str__` method returns).",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1855,
+        "completion_tokens": 244
+      }
+    },
+    {
+      "query": "Which values can the role field of a Message take?",
+      "expected_chunks": [
+        "Message",
+        "Role"
+      ],
+      "retrieved_chunks": [
+        "Message",
+        "Message.__str__",
+        "MessageSerializer",
+        "Role",
+        "build_history_text"
+      ],
+      "answer": "The `role` field of `Message` is defined using a `TextChoices` enum:\n```python\nclass Role(models.TextChoices):\n    USER      = \"user\",      \"User\"\n    ASSISTANT = \"assistant\", \"Assistant\"\n```\nTherefore the field can take the string values **\"user\"** or **\"assistant\"** (the human\u2011readable labels are \"User\" and \"Assistant\").",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1208,
+        "completion_tokens": 270
+      }
+    },
+    {
+      "query": "What does Message.__str__ return and how does it truncate the content?",
+      "expected_chunks": [
+        "Message.__str__"
+      ],
+      "retrieved_chunks": [
+        "Message.__str__",
+        "ConversationListSerializer.get_last_message",
+        "UploadedFile.__str__",
+        "Project.__str__",
+        "Conversation.__str__"
+      ],
+      "answer": "The `Message.__str__` method returns a formatted string that includes the message\u2019s role and a preview of its content. Specifically, it builds the string as:\n\n```python\nf\"[{self.role}] {self.content[:60]}\"\n```\n\n- The role (e.g., \"user\", \"assistant\") is placed inside square brackets.\n- The content is sliced with `self.content[:60]`, which takes only the first 60 characters of the message text. This truncates the content to a short preview, preventing the full message from being displayed in the string representation.\n\nSo, `Message.__str__` returns something like `\"[user] Hello, this is the beginning of my message...\"` where only the first 60 characters of the message are shown.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 957,
+        "completion_tokens": 314
+      }
+    },
+    {
+      "query": "How is the filesystem sub\u2011path for a project's vector store constructed?",
+      "expected_chunks": [
+        "Project.vectorstore_subpath"
+      ],
+      "retrieved_chunks": [
+        "Project.vectorstore_subpath",
+        "_store_dir",
+        "save_index",
+        "build_and_save_index",
+        "load_index"
+      ],
+      "answer": "The sub\u2011path is built by the `vectorstore_subpath` method. It creates a safe, deterministic path using only the integer primary\u2011keys of the owner (user) and the project:\n\n```python\ndef vectorstore_subpath(self) -> str:\n    \"\"\"\n    Safe sub\u2011path derived from integer PKs only.\n    Full path is resolved in `faiss_store.py` using `settings.VECTORSTORE_ROOT`.\n    Never constructed from user\u2011supplied strings.\n    \"\"\"\n    return f\"user_{self.owner_id}/project_{self.pk}\"\n```\n\nSo for a project whose `owner_id` is\u202f42 and primary key (`pk`) is\u202f7, the sub\u2011path would be `user_42/project_7`. This string is later combined with `settings.VECTORSTORE_ROOT` (in `_store_dir`) to form the absolute directory on disk.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1968,
+        "completion_tokens": 456
+      }
+    },
+    {
+      "query": "What unique constraints are enforced on the ChunkIndex model?",
+      "expected_chunks": [
+        "ChunkIndex",
+        "Meta"
+      ],
+      "retrieved_chunks": [
+        "Migration",
+        "Migration",
+        "ChunkIndex",
+        "get_faiss_ids_by_symbols",
+        "ChunkIndex.__str__"
+      ],
+      "answer": "The `ChunkIndex` model enforces a **unique\u2011together constraint** on the combination of `project`, `symbol`, and `original_path`. In other words, for a given project, the pair of a symbol (function/class name) and its original file path must be unique. This is defined in the model\u2019s `Meta` class (and reflected in the migration that adds the constraint):\n\n```python\nclass Meta:\n    unique_together = [('project', 'symbol', 'original_path')]\n```\n\nNo other unique constraints are defined on the model.",
+      "hit": true,
+      "recall": 0.5,
+      "reciprocal_rank": 0.3333,
+      "usage": {
+        "prompt_tokens": 1767,
+        "completion_tokens": 368
+      }
+    },
+    {
+      "query": "How does ChunkIndex.__str__ represent a chunk instance?",
+      "expected_chunks": [
+        "ChunkIndex.__str__"
+      ],
+      "retrieved_chunks": [
+        "ChunkIndex.__str__",
+        "ChunkIndex",
+        "get_faiss_ids_by_symbols",
+        "IncrementalIndexResult.__str__",
+        "diff_chunks"
+      ],
+      "answer": "The `ChunkIndex.__str__` method returns a string that combines the chunk\u2019s symbol with the name of its project, formatted as:\n\n```python\nreturn f\"{self.symbol} [{self.project.name}]\"\n```\n\nSo an instance of `ChunkIndex` is represented as `<symbol> [<project name>]`.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1814,
+        "completion_tokens": 221
+      }
+    },
+    {
+      "query": "What default ordering is applied to Conversation querysets?",
+      "expected_chunks": [
+        "Conversation",
+        "Meta"
+      ],
+      "retrieved_chunks": [
+        "Meta",
+        "Conversation",
+        "Meta",
+        "Message",
+        "ConversationListCreateView"
+      ],
+      "answer": "The `Conversation` model defines its default ordering in its inner `Meta` class as:\n\n```python\nclass Meta:\n    ordering = [\"-updated_at\"]\n```\n\nTherefore, any queryset on `Conversation` will be ordered by the `updated_at` field in descending order (most recently updated first).",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1412,
+        "completion_tokens": 211
+      }
+    },
+    {
+      "query": "How does Conversation.__str__ build its string representation?",
+      "expected_chunks": [
+        "Conversation.__str__"
+      ],
+      "retrieved_chunks": [
+        "Conversation.__str__",
+        "Message.__str__",
+        "Project.__str__",
+        "UploadedFile.__str__",
+        "build_history_text"
+      ],
+      "answer": "The `Conversation.__str__` method simply returns a formatted string that combines the conversation\u2019s title with its associated project. Its implementation is:\n```python\ndef __str__(self):\n    return f\"{self.title} [{self.project}]\"\n```\nSo when you call `str(conversation)`, you get something like `\"My Chat Title [ProjectName]\"`, where `self.title` is the conversation\u2019s title and `self.project` is the project object (or its string representation) shown inside square brackets.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1006,
+        "completion_tokens": 245
+      }
+    },
+    {
+      "query": "What status options are available via the Status TextChoices class?",
+      "expected_chunks": [
+        "Status"
+      ],
+      "retrieved_chunks": [
+        "Status",
+        "Project",
+        "Role",
+        "Message",
+        "RankedChunk"
+      ],
+      "answer": "The `Status` `TextChoices` class defines four possible values:\n\n```python\nclass Status(models.TextChoices):\n    PENDING  = \"pending\",  \"Pending\"\n    INDEXING = \"indexing\", \"Indexing\"\n    READY    = \"ready\",    \"Ready\"\n    FAILED   = \"failed\",   \"Failed\"\n```\n\nSo the available status options are **PENDING**, **INDEXING**, **READY**, and **FAILED** (with their corresponding machine\u2011readable values `\"pending\"`, `\"indexing\"`, `\"ready\"`, and `\"failed`).\n",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1518,
+        "completion_tokens": 330
+      }
+    },
+    {
+      "query": "What does the _extract_source function return and how does it compute the line range?",
+      "expected_chunks": [
+        "_extract_source"
+      ],
+      "retrieved_chunks": [
+        "_extract_source",
+        "chunk_file",
+        "build_context",
+        "_validate_explanations",
+        "diff_chunks"
+      ],
+      "answer": "The `_extract_source` function returns a single string containing the original source code for the given AST node. It does this by:\n\n1. Receiving `source_lines`, a list of the file\u2019s lines (including line\u2011breaks), and an `ast.AST` node.\n2. Computing the start index as `node.lineno - 1` because the `lineno` attribute is 1\u2011based while Python list indices are 0\u2011based.\n3. Using `node.end_lineno` as the end index. `end_lineno` is inclusive, so slicing with `source_lines[start:end]` correctly includes the last line of the node.\n4. Joining the selected slice of lines with `\"\".join(...)` to produce a single string of the node\u2019s source code.\n\nSo the function returns the concatenated source lines that span from the node\u2019s first line (`lineno`) up to and including its last line (`end_lineno`).",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2188,
+        "completion_tokens": 366
+      }
+    },
+    {
+      "query": "Which Pydantic model represents a structured code explanation?",
+      "expected_chunks": [
+        "CodeExplanation"
+      ],
+      "retrieved_chunks": [
+        "CodeExplanation",
+        "_get_explainer_chain",
+        "EvaluationResult",
+        "generate_explanation",
+        "get_evaluator_chain"
+      ],
+      "answer": "The Pydantic model that represents a structured code explanation is **`CodeExplanation`** (defined in Chunk\u202f1). It includes fields `one_line_summary`, `detailed_explanation`, and `dependencies`.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2702,
+        "completion_tokens": 209
+      }
+    },
+    {
+      "query": "How does the system determine whether a FunctionDef node belongs to a class?",
+      "expected_chunks": [
+        "_is_method"
+      ],
+      "retrieved_chunks": [
+        "_is_method",
+        "CodeChunk",
+        "chunk_file",
+        "CodeExplanation",
+        "remove_from_faiss"
+      ],
+      "answer": "The system uses the helper function `_is_method` to decide if a `FunctionDef` node is part of a class. The function walks the entire AST (`ast.walk(tree)`) looking for `ClassDef` nodes. For each class it iterates over the class body (`node.body`) and checks whether any item **is** the `func_node` in question. If it finds the function inside a class body, it returns `True`; otherwise it returns `False`. This boolean is then used (e.g., in `chunk_file`) to treat the function as a method rather than a top\u2011level function.\n\n```python\ndef _is_method(func_node: ast.FunctionDef, tree: ast.AST) -> bool:\n    \"\"\"Return True if func_node is nested inside a ClassDef.\"\"\"\n    for node in ast.walk(tree):\n        if isinstance(node, ast.ClassDef):\n            for item in node.body:\n                if item is func_node:\n                    return True\n    return False\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1830,
+        "completion_tokens": 433
+      }
+    },
+    {
+      "query": "Where are the directories for storing vector indexes created and what helper is used?",
+      "expected_chunks": [
+        "_store_dir"
+      ],
+      "retrieved_chunks": [
+        "load_index",
+        "save_index",
+        "build_and_save_index",
+        "_store_dir",
+        "ChunkIndex"
+      ],
+      "answer": "The directories for storing FAISS vector indexes are created by the helper function `_store_dir`. This function builds the path under `settings.VECTORSTORE_ROOT` using the pattern `user_<user_id>/project_<project_id>`, creates the directory (including any necessary parent directories), and returns the resulting `Path` object.\n\n```python\ndef _store_dir(user_id: int, project_id: int) -> Path:\n    \"\"\"Return (and create) the FAISS directory for this user/project pair.\"\"\"\n    path = settings.VECTORSTORE_ROOT / f\"user_{user_id}\" / f\"project_{project_id}\"\n    path.mkdir(parents=True, exist_ok=True)\n    return path\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.25,
+      "usage": {
+        "prompt_tokens": 2239,
+        "completion_tokens": 335
+      }
+    },
+    {
+      "query": "What steps does chunk_file take when parsing a Python file succeeds versus when it fails?",
+      "expected_chunks": [
+        "chunk_file"
+      ],
+      "retrieved_chunks": [
+        "chunk_file",
+        "chunk_all_files_with_paths",
+        "fetch_github_repo",
+        "diff_chunks",
+        "GithubImportFilesView.post"
+      ],
+      "answer": "When **`chunk_file`** is called it first reads the file and tries to parse it with `ast.parse`.\n\n**If the parse fails (raises `SyntaxError`):**\n1. The exception is caught.\n2. The whole file is treated as a single code chunk representing the module.\n3. A `CodeChunk` is created with:\n   - `symbol_name` set to the file stem (the filename without extension)\n   - `code_text` containing the entire source text\n   - `start_line` = 1 and `end_line` = total number of lines in the file\n   - `chunk_type` = \"module\"\n   - `file_path` set to the path of the file\n4. This single chunk is added to the `chunks` list and returned.\n\n**If the parse succeeds:**\n1. The AST tree is obtained.\n2. The function walks the tree with `ast.walk`.\n3. For each top\u2011level `FunctionDef` that is **not** a method (checked via `_is_method`), it creates a `CodeChunk` with:\n   - `symbol_name` = function name\n   - `code_text` = source extracted for that node (`_extract_source`)\n   - `start_line` / `end_line` from the node\u2019s line numbers\n   - `chunk_type` = \"function\"\n   - `file_path` = path of the file\n4. For each `ClassDef` it creates a `CodeChunk` for the whole class (type \"class\") using the same fields.\n5. Inside each class, it iterates over the class body and for every `FunctionDef` (method) it creates a `CodeChunk` with:\n   - `symbol_name` = \"{ClassName}.{method_name}\"\n   - `code_text` = extracted source for the method\n   - `start_line` / `end_line` from the method node\n   - `chunk_type` = \"method\"\n   - `file_path` = path of the file\n6. All generated chunks are collected in the `chunks` list, which is returned.\n\nThus, on failure the function returns a single module\u2011level chunk containing the whole file, while on success it returns separate chunks for each top\u2011level function, each class, and each method inside classes.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2875,
+        "completion_tokens": 638
+      }
+    },
+    {
+      "query": "How are HuggingFace embeddings instantiated and configured in this codebase?",
+      "expected_chunks": [
+        "get_embeddings"
+      ],
+      "retrieved_chunks": [
+        "get_embeddings",
+        "_get_cross_encoder",
+        "build_and_save_index",
+        "RankedChunk",
+        "RagCoreConfig"
+      ],
+      "answer": "In this codebase the HuggingFace embeddings are created by the `get_embeddings` function (see Chunk\u202f1). The function returns a **singleton** `HuggingFaceEmbeddings` instance that is cached with `lru_cache` so the model is loaded only once per process.\n\n```python\ndef get_embeddings() -> HuggingFaceEmbeddings:\n    \"\"\"\n    Singleton HuggingFaceEmbeddings instance.\n    Cached with lru_cache so the model is loaded from disk only once\n    per process \u2014 avoids repeated 80\u202fMB model loads.\n    \"\"\"\n    return HuggingFaceEmbeddings(\n        model_name=settings.EMBEDDING_MODEL_NAME,\n        model_kwargs={\"device\": \"cpu\"},\n        encode_kwargs={\"normalize_embeddings\": True},\n    )\n```\n\n**Configuration details**:\n- **Model name** is taken from the Django settings variable `EMBEDDING_MODEL_NAME`.\n- The model is forced to run on the **CPU** via `model_kwargs={\"device\": \"cpu\"}`.\n- Embeddings are **normalized** (`L2`\u2011norm) before being returned, as indicated by `encode_kwargs={\"normalize_embeddings\": True}`.\n\nThus, the codebase instantiates HuggingFace embeddings as a cached, CPU\u2011only, normalized\u2011embedding model using the model name defined in the settings.\n",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1885,
+        "completion_tokens": 445
+      }
+    },
+    {
+      "query": "Describe the process of generating a single code explanation, including token tracking.",
+      "expected_chunks": [
+        "generate_explanation",
+        "_get_explainer_chain"
+      ],
+      "retrieved_chunks": [
+        "generate_explanation",
+        "generate_explanations_batch",
+        "build_and_save_index",
+        "evaluate_and_answer",
+        "TokenTrackingCallback"
+      ],
+      "answer": "The single\u2011code\u2011explanation workflow is implemented in the **`generate_explanation`** function.\n\n1. **Create a token\u2011tracking callback** \u2013 `callback = TokenTrackingCallback()` is instantiated so the LLM\u2019s token usage can be recorded while the explanation is being generated.\n\n2. **Invoke the LangChain explainer chain** \u2013 `_get_explainer_chain().invoke(...)` is called with a dictionary that contains the relevant metadata of the `CodeChunk`:\n   * `symbol_name`\n   * `chunk_type`\n   * `start_line` / `end_line`\n   * the actual source `code`\n   The `config` argument passes the previously created `callback` so the chain will report token usage back to it.\n\n3. **Collect token statistics** \u2013 After the chain finishes, the callback holds the token counts. The function prints them:\n   ```python\n   print(\"Total tokens:\", callback.total_tokens)\n   print(\"Prompt tokens:\", callback.prompt_tokens)\n   print(\"Completion tokens:\", callback.completion_tokens)\n   ```\n   These values represent the total tokens consumed, how many were part of the prompt, and how many were generated as the completion.\n\n4. **Return the explanation and the callback** \u2013 The function returns a tuple `(response.model_dump(), callback)`. `response.model_dump()` contains the structured explanation (e.g., `one_line_summary`, `detailed_explanation`, `dependencies`), while `callback` gives access to the token\u2011usage counters for any downstream processing.\n\n5. **Error handling** \u2013 If any exception occurs while invoking the chain, the function logs the error and returns a minimal fallback dictionary that still includes a one\u2011line summary and a generic detailed explanation, along with an empty `dependencies` list.\n\nIn summary, generating a single code explanation consists of invoking the explainer chain with the chunk\u2019s metadata while a `TokenTrackingCallback` records token usage, after which the structured explanation and token statistics are returned.\n",
+      "hit": true,
+      "recall": 0.5,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2626,
+        "completion_tokens": 616
+      }
+    },
+    {
+      "query": "How does generate_explanations_batch process a list of CodeChunk objects and handle errors?",
+      "expected_chunks": [
+        "generate_explanations_batch",
+        "generate_explanation"
+      ],
+      "retrieved_chunks": [
+        "generate_explanations_batch",
+        "IndexFilesView.post",
+        "generate_explanation",
+        "chunk_file",
+        "chunk_all_files_with_paths"
+      ],
+      "answer": "The `generate_explanations_batch` function takes a list of `CodeChunk` objects (or any objects that expose the same attributes) and iterates over them one\u2011by\u2011one.\n\n```python\nfor chunk in chunks:\n    try:\n        res, callback = generate_explanation(chunk)\n        results.append({\n            \"data\": res,\n            \"usage\": {\n                \"prompt_tokens\": callback.prompt_tokens,\n                \"completion_tokens\": callback.completion_tokens,\n            },\n        })\n    except Exception as e:\n        # error handling path\n        logger.error(f\"Error generating explanation for {chunk.symbol_name}: {e}\")\n        results.append({\n            \"data\": {\n                \"symbol_name\": chunk.symbol_name,\n                \"summary\": f\"{chunk.symbol_name} logic\",\n                \"dependencies\": [],\n                \"error\": str(e),\n            },\n            \"usage\": None,\n        })\n```\n\n**Processing steps**\n1. **Loop over each chunk** \u2013 The function expects each element to have at least a `symbol_name` attribute (used for logging) and any other fields required by `generate_explanation`.\n2. **Generate an explanation** \u2013 It calls `generate_explanation(chunk)`, which returns a tuple `(response, callback)`. The response is a structured dictionary describing the chunk, and the callback contains token\u2011usage statistics.\n3. **Collect successful results** \u2013 For a successful call, it stores the response under the key `\"data\"` and the token usage under `\"usage\"` (prompt and completion token counts).\n\n**Error handling**\n- If `generate_explanation` raises any exception, the `except` block catches it.\n- The error is logged with `logger.error` including the chunk\u2019s `symbol_name`.\n- A fallback result is appended:\n  - `\"data\"` contains a minimal placeholder explanation (`symbol_name`, a generic `summary`, an empty `dependencies` list) and the stringified error under the key `\"error\"`.\n  - `\"usage\"` is set to `None` because no token data was produced.\n\nThus, `generate_explanations_batch` always returns a list of dictionaries, each representing either a successful explanation with usage metrics or a graceful error entry that preserves the chunk\u2019s identity and records the failure.\n",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2582,
+        "completion_tokens": 707
+      }
+    },
+    {
+      "query": "Explain how a FAISS index is built from code chunks and saved to disk.",
+      "expected_chunks": [
+        "build_and_save_index",
+        "save_index",
+        "CodeChunk"
+      ],
+      "retrieved_chunks": [
+        "IndexFilesView.post",
+        "incremental_reindex",
+        "FileUploadView.post",
+        "build_and_save_index",
+        "add_to_faiss"
+      ],
+      "answer": "The FAISS index is created in the **`build_and_save_index`** function (Chunk\u202f4).  The process can be broken down into the following steps:\n\n1. **Validate input** \u2013 The function raises a `ValueError` if the `chunks` list is empty.\n\n2. **Prepare a symbol\u2011to\u2011summary map** \u2013 For each `CodeChunk` the function extracts the last component of the symbol name (`normalize(chunk.symbol_name)`) and stores the one\u2011line summary from the corresponding explanation:\n   ```python\n   symbol_to_summary = {\n       normalize(chunk.symbol_name): exp[\"one_line_summary\"]\n       for chunk, exp in zip(chunks, explanations)\n   }\n   ```\n   This map is later used to resolve dependency summaries.\n\n3. **Create `Document` objects** \u2013 For every chunk the function:\n   * Reads the list of dependencies from `explanation[\"dependencies\"]`.\n   * Looks up each dependency in `symbol_to_summary` and builds a list of *dependency summaries*.\n   * Instantiates a `Document` (from `langchain_core.documents`) whose `page_content` is the detailed explanation and whose `metadata` contains:\n     - the raw code (`chunk.code_text`)\n     - symbol name, chunk type, file path, line numbers\n     - the one\u2011line summary, the raw dependencies, and the generated `dependency_summaries`\n     - token usage information (`input_tokens`, `output_tokens`)\n   * The document is appended to a `documents` list and also stored in a `symbol_index` dict keyed by the full symbol name (used later for fast lookup).\n\n4. **Build the FAISS store** \u2013 After all documents are prepared, the function creates a FAISS vector store from them:\n   ```python\n   store = FAISS.from_documents(documents, get_embeddings())\n   ```\n   `get_embeddings()` supplies the embedding model (cached HuggingFace embeddings).  The resulting `store` contains the vector index and the associated metadata.\n\n5. **Persist the index to disk** \u2013 The directory for the project is obtained with `_store_dir(user_id, project_id)`.  The FAISS store is saved locally:\n   ```python\n   index_path = str(_store_dir(user_id, project_id))\n   store.save_local(index_path)\n   ```\n   This writes the FAISS index files (`index.faiss`, `index.pkl`, etc.) into the project\u2011specific folder.\n\n6. **Save the symbol\u2011to\u2011document lookup** \u2013 In addition to the FAISS files, the function pickles the `symbol_index` dictionary so that later code can resolve a symbol directly to its `Document` without re\u2011searching the vector store:\n   ```python\n   with open(os.path.join(index_path, \"symbol_index.pkl\"), \"wb\") as f:\n       pickle.dump(symbol_index, f)\n   ```\n\n7. **(Optional) Store metadata in the database** \u2013 If a `project` instance is supplied, the function also clears any existing `ChunkIndex` rows for that project and bulk\u2011creates new rows containing the same information that was stored in the FAISS metadata (code hash, FAISS ID, explanations, token counts, etc.).\n\n**Summary**\n- The function transforms each `CodeChunk` + its LLM\u2011generated explanation into a `Document` with rich metadata.\n- All documents are fed to `FAISS.from_documents` to create a vector index.\n- The index is saved to a project\u2011specific directory on disk, and a pickled symbol\u2011lookup table is stored alongside it for fast symbol resolution.\n- When a `project` object is provided, the corresponding database rows are refreshed to keep the relational metadata in sync with the FAISS store.\n\nThus, the FAISS index is built by embedding the explanations, associating them with code\u2011chunk metadata, and then persisting both the vector store and a symbol\u2011index pickle to disk.",
+      "hit": true,
+      "recall": 0.3333333333333333,
+      "reciprocal_rank": 0.25,
+      "usage": {
+        "prompt_tokens": 4399,
+        "completion_tokens": 1073
+      }
+    },
+    {
+      "query": "What is the workflow for loading an existing FAISS index for a given user and project?",
+      "expected_chunks": [
+        "load_index",
+        "_store_dir"
+      ],
+      "retrieved_chunks": [
+        "load_index",
+        "query_index",
+        "incremental_reindex",
+        "IndexFilesView",
+        "save_index"
+      ],
+      "answer": "To load an existing FAISS index for a specific `user_id` and `project_id`, the `load_index` function follows these steps:\n\n1. **Determine the storage directory** \u2013 It calls the helper `_store_dir(user_id, project_id)` to get the path where the index files are kept.\n2. **Check for the index file** \u2013 It looks for a file named `index.faiss` inside that directory. If the file does not exist, the function returns `None`, indicating that no index has been built yet.\n3. **Load the index** \u2013 If the file exists, it loads the FAISS store with:\n   ```python\n   FAISS.load_local(\n       str(store_dir),\n       get_embeddings(),\n       allow_dangerous_deserialization=True,\n   )\n   ```\n   - `str(store_dir)` is the directory path.\n   - `get_embeddings()` provides the embedding model used for the index.\n   - `allow_dangerous_deserialization=True` permits loading the persisted index.\n4. **Return the FAISS store** \u2013 The loaded `FAISS` object is returned to the caller. If the index was missing, `None` is returned instead.\n\nThus, the workflow is: compute the directory \u2192 verify the `index.faiss` file exists \u2192 load the index with the appropriate embeddings \u2192 return the store (or `None` if not present).",
+      "hit": true,
+      "recall": 0.5,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2907,
+        "completion_tokens": 483
+      }
+    },
+    {
+      "query": "What does the `normalize` function return given a dotted module path?",
+      "expected_chunks": [
+        "normalize"
+      ],
+      "retrieved_chunks": [
+        "normalize",
+        "normalize",
+        "sanitise_relative_path",
+        "chunk_file",
+        "_validate_explanations"
+      ],
+      "answer": "The `normalize` function splits the input string on `.` and returns the last element, i.e., the substring after the final dot. For a dotted module path like `package.submodule.Class`, it would return `Class`.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1751,
+        "completion_tokens": 198
+      }
+    },
+    {
+      "query": "Which exception is raised for GitHub API errors?",
+      "expected_chunks": [
+        "GithubFetchError"
+      ],
+      "retrieved_chunks": [
+        "GithubFetchError",
+        "_api_get",
+        "GithubRepoInfoView",
+        "GithubRepoInfoView.post",
+        "_fetch_tree"
+      ],
+      "answer": "The code raises a custom exception named **`GithubFetchError`** for GitHub API errors. It is defined as:\n```python\nclass GithubFetchError(Exception):\n    \"\"\"Raised when GitHub API returns an error.\"\"\"\n    pass\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1625,
+        "completion_tokens": 236
+      }
+    },
+    {
+      "query": "How can I retrieve the top\u2011k similar documents for a user query?",
+      "expected_chunks": [
+        "query_index"
+      ],
+      "retrieved_chunks": [
+        "query_index",
+        "stream_answer",
+        "rerank_docs",
+        "retrieve",
+        "rerank"
+      ],
+      "answer": "You can retrieve the top\u2011k most similar documents for a user query by calling the **`query_index`** function (or the convenience wrapper **`retrieve`**). The function queries the FAISS store for the given user and project and returns a list of `Document` objects.\n\n```python\n# Direct call to query_index (you can specify top_k explicitly)\ndocuments = query_index(\n    user_id=123,          # the user performing the query\n    project_id=456,       # the project containing the FAISS index\n    query=\"How does the authentication flow work?\",\n    top_k=10,             # number of similar documents to return (optional)\n)\n\n# Or use the wrapper `retrieve`, which uses the default top_k from settings\ndocuments = retrieve(\n    query=\"How does the authentication flow work?\",\n    user_id=123,\n    project_id=456,\n)\n```\n\n- If `top_k` is omitted, the function falls back to `settings.FAISS_TOP_K`.\n- The function raises a `ValueError` if the FAISS index does not exist for the specified user/project, so you may want to handle that exception.\n- The returned list contains `Document` objects where `page_content` holds the explanation and `metadata` includes the associated code snippet.\n\nThis is the standard way in the codebase to fetch the most relevant code\u2011related documents for a natural\u2011language query.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 3113,
+        "completion_tokens": 591
+      }
+    },
+    {
+      "query": "What validation steps are performed before an uploaded file is saved?",
+      "expected_chunks": [
+        "validate_upload",
+        "save_uploaded_file",
+        "sanitise_relative_path"
+      ],
+      "retrieved_chunks": [
+        "FileUploadView.post",
+        "validate_upload",
+        "FileUploadView",
+        "GithubImportFilesView.post",
+        "save_uploaded_file"
+      ],
+      "answer": "Before the file is written to disk, `save_uploaded_file` calls `validate_upload(file)`.  The `validate_upload` function performs two checks:\n\n1. **Extension whitelist** \u2013 it extracts the file\u2019s suffix (`Path(file.name).suffix.lower()`) and ensures it is present in `settings.ALLOWED_UPLOAD_EXTENSIONS`. If not, it raises a `ValidationError`.\n2. **Size limit** \u2013 it compares `file.size` against `settings.MAX_UPLOAD_SIZE_BYTES`. If the file is larger than the allowed maximum, it raises a `ValidationError` with a message indicating the size limit.\n\nAfter these checks pass, `save_uploaded_file` also sanitises any user\u2011supplied `relative_path` via `sanitise_relative_path` before constructing the destination directory, ensuring the path cannot escape the intended upload folder.\n\nThus, the validation steps are:\n- Verify the file extension is allowed.\n- Verify the file size does not exceed the configured maximum.\n- (Additionally) sanitise the optional relative path to prevent directory\u2011traversal attacks before saving.",
+      "hit": true,
+      "recall": 0.6666666666666666,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 3646,
+        "completion_tokens": 487
+      }
+    },
+    {
+      "query": "How does `fetch_github_repo` obtain and filter the list of Python files from a repository URL?",
+      "expected_chunks": [
+        "fetch_github_repo",
+        "_parse_github_url",
+        "_fetch_tree"
+      ],
+      "retrieved_chunks": [
+        "fetch_github_repo",
+        "GithubImportFilesView",
+        "GithubImportFilesView.post",
+        "_fetch_tree",
+        "GithubImportView.post"
+      ],
+      "answer": "The `fetch_github_repo` function works in three main stages:\n\n1. **Parse the URL and retrieve the repository tree**\n   ```python\n   owner, repo, ref = _parse_github_url(github_url)\n   tree = _fetch_tree(owner, repo, ref)\n   ```\n   `_parse_github_url` extracts the owner, repository name, and optional ref (branch/tag/commit). `_fetch_tree` then calls the GitHub API (`/git/trees/{ref}?recursive=1`) to get a flat list of every file in the repo.\n\n2. **Filter the tree for Python files**\n   ```python\n   py_items = []\n   for item in tree:\n       if item.get('type') != 'blob':\n           continue\n       path = item['path']\n\n       # Skip ignored directories (e.g., __pycache__, venv, .git)\n       parts = path.split('/')\n       if any(part in SKIP_DIRS for part in parts):\n           continue\n\n       # Keep only *.py files\n       if not path.endswith('.py'):\n           continue\n\n       # Skip files that are too large\n       size = item.get('size', 0)\n       if size > MAX_FILE_SIZE_BYTES:\n           continue\n\n       py_items.append((path, size))\n   ```\n   The loop discards non\u2011blob entries, any path that contains a directory listed in `SKIP_DIRS`, files that do not end with `.py`, and files larger than the configured `MAX_FILE_SIZE_BYTES`. The remaining entries are stored as `(path, size)` tuples.\n\n3. **Download the contents of the remaining files**\n   ```python\n   files = []\n   for path, size in py_items:\n       try:\n           content = _fetch_file_content(owner, repo, path, ref)\n           files.append(GithubFile(path=path, content=content, size=len(content)))\n       except GithubFetchError:\n           # Skip files that fail to download individually\n           continue\n   ```\n   For each filtered path, `_fetch_file_content` retrieves the raw file data from GitHub. The data is wrapped in a `GithubFile` dataclass (holding the original path, the file\u2019s bytes, and its size) and added to the result list.\n\nIf no Python files survive the filtering step, the function raises a `GithubFetchError`.\n\nIn summary, `fetch_github_repo`:\n- Parses the repo URL.\n- Retrieves the full file tree via the GitHub API.\n- Filters that tree to keep only non\u2011ignored, reasonably\u2011sized `.py` files.\n- Downloads each of those files and returns them as `GithubFile` objects.\n",
+      "hit": true,
+      "recall": 0.6666666666666666,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 3572,
+        "completion_tokens": 762
+      }
+    },
+    {
+      "query": "How can I get the default branch name of a repository when only its GitHub URL is known?",
+      "expected_chunks": [
+        "get_repo_info",
+        "_parse_github_url",
+        "_get_default_branch",
+        "_api_get"
+      ],
+      "retrieved_chunks": [
+        "_get_default_branch",
+        "get_repo_info",
+        "_fetch_tree",
+        "_parse_github_url",
+        "_fetch_file_content"
+      ],
+      "answer": "You can obtain the default branch name directly from the GitHub URL by first parsing the URL to get the *owner* and *repo* parts and then calling the helper that queries the repository metadata. The code already provides two utilities that do exactly this:\n\n1. **`_parse_github_url(url: str) -> tuple[str, str, str]`** \u2013 extracts the *owner*, *repo* and an optional *ref* (branch/tag). If the URL does not contain an explicit branch, the returned `ref` is `'HEAD'`.\n2. **`_get_default_branch(owner: str, repo: str) -> str`** \u2013 contacts the GitHub API (`https://api.github.com/repos/{owner}/{repo}`) and returns the repository\u2019s `default_branch` field (fall\u2011back to `'main'` on error).\n\nPutting them together gives a tiny helper you can use anywhere in the code base:\n\n```python\ndef get_default_branch_from_url(github_url: str) -> str:\n    \"\"\"Return the default branch name for a repository given only its GitHub URL.\n\n    The function parses the URL to obtain the owner and repository name, then\n    queries the GitHub API for the repository\u2019s default branch.\n    \"\"\"\n    owner, repo, _ = _parse_github_url(github_url)  # we ignore the ref part here\n    return _get_default_branch(owner, repo)\n```\n\n**Usage example**\n```python\nurl = \"https://github.com/psf/requests\"\ndefault_branch = get_default_branch_from_url(url)\nprint(default_branch)   # \u2192 \"main\" (or whatever the repo\u2019s default is)\n```\n\nThe two underlying functions (`_parse_github_url` and `_get_default_branch`) are already defined in the code base, so no additional dependencies are required.\n",
+      "hit": true,
+      "recall": 0.75,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1833,
+        "completion_tokens": 621
+      }
+    },
+    {
+      "query": "What HTTP headers are included in GitHub API requests?",
+      "expected_chunks": [
+        "_get_headers"
+      ],
+      "retrieved_chunks": [
+        "_get_headers",
+        "_api_get",
+        "_fetch_file_content",
+        "_fetch_tree",
+        "GithubRepoInfoView"
+      ],
+      "answer": "The helper function `_get_headers()` builds the HTTP headers used for GitHub API requests. It always includes:\n\n```python\nheaders = {\n    \"Accept\": \"application/vnd.github+json\",\n    \"X-GitHub-Api-Version\": \"2022-11-28\",\n}\n```\n\nIf a GitHub personal access token is available (via the `GITHUB_TOKEN` setting or environment variable), an `Authorization` header is added:\n\n```python\nAuthorization: Bearer <token>\n```\n\nSo the complete set of headers is:\n- `Accept: application/vnd.github+json`\n- `X-GitHub-Api-Version: 2022-11-28`\n- *(optional)* `Authorization: Bearer <your-token>` when a token is configured.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1726,
+        "completion_tokens": 327
+      }
+    },
+    {
+      "query": "What error handling does `_api_get` perform for common HTTP status codes?",
+      "expected_chunks": [
+        "_api_get",
+        "GithubFetchError"
+      ],
+      "retrieved_chunks": [
+        "_api_get",
+        "_fetch_file_content",
+        "_fetch_tree",
+        "GithubRepoInfoView",
+        "ConversationDetailView.get"
+      ],
+      "answer": "The `_api_get` function checks the response status code and raises a `GithubFetchError` with a specific message for several common HTTP errors:\n\n- **404 Not Found** \u2013 Indicates the repository cannot be found; the error message advises checking the URL and repository visibility.\n- **403 Forbidden** \u2013 Indicates the GitHub API rate limit has been exceeded; the message suggests setting a `GITHUB_TOKEN` to obtain higher limits.\n- **401 Unauthorized** \u2013 Indicates authentication failed; the message advises verifying the `GITHUB_TOKEN`.\n- **Other non\u2011OK responses** \u2013 For any other status where `resp.ok` is false, it raises a generic `GithubFetchError` that includes the status code and the first part of the response text.\n\nIf none of these conditions are met, the function returns the JSON payload of the successful response.",
+      "hit": true,
+      "recall": 0.5,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1692,
+        "completion_tokens": 326
+      }
+    },
+    {
+      "query": "What attributes are defined in the `GithubFile` class?",
+      "expected_chunks": [
+        "GithubFile"
+      ],
+      "retrieved_chunks": [
+        "GithubFile",
+        "chunk_all_files_with_paths",
+        "GithubFetchError",
+        "CodeChunk",
+        "fetch_github_repo"
+      ],
+      "answer": "The `GithubFile` class defines three attributes:\n\n```python\npath:    str   # relative path inside the repo, e.g., \"myapp/utils/helpers.py\"\ncontent: bytes # raw file bytes\nsize:    int   # file size in bytes\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1710,
+        "completion_tokens": 161
+      }
+    },
+    {
+      "query": "How does `_fetch_file_content` construct the URL to download a raw file from a specific commit or branch?",
+      "expected_chunks": [
+        "_fetch_file_content",
+        "_get_headers"
+      ],
+      "retrieved_chunks": [
+        "_fetch_file_content",
+        "_fetch_tree",
+        "fetch_github_repo",
+        "GithubImportFilesView.post",
+        "GithubImportFilesView"
+      ],
+      "answer": "The function builds the raw\u2011file URL with an f\u2011string that inserts the repository owner, repository name, the reference (branch name, tag, or commit SHA), and the file\u2019s path:\n\n```python\nurl = f\"https://raw.githubusercontent.com/{owner}/{repo}/{ref}/{path}\"\n```\n\nSo the URL follows the pattern `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>`, where `<ref>` can be any Git reference such as a commit hash or branch name.\n",
+      "hit": true,
+      "recall": 0.5,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2678,
+        "completion_tokens": 402
+      }
+    },
+    {
+      "query": "What does the compute_hash function return for a given source code string?",
+      "expected_chunks": [
+        "compute_hash"
+      ],
+      "retrieved_chunks": [
+        "compute_hash",
+        "diff_chunks",
+        "chunk_file",
+        "Project.__str__",
+        "UploadedFile.__str__"
+      ],
+      "answer": "The `compute_hash` function takes a source code string (`code_text`) and returns its SHA\u2011256 hash as a hexadecimal string. It encodes the input using UTF\u20118, computes the SHA\u2011256 digest via `hashlib.sha256`, and then calls `.hexdigest()` to produce the hash string.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1835,
+        "completion_tokens": 173
+      }
+    },
+    {
+      "query": "Describe the full workflow of incremental_reindex, including how it processes new files, detects changes, and updates the FAISS store.",
+      "expected_chunks": [
+        "incremental_reindex",
+        "chunk_all_files_with_paths",
+        "diff_chunks",
+        "add_to_faiss",
+        "remove_from_faiss",
+        "IncrementalIndexResult"
+      ],
+      "retrieved_chunks": [
+        "incremental_reindex",
+        "ReindexView.post",
+        "ReindexView",
+        "IncrementalIndexResult",
+        "save_index"
+      ],
+      "answer": "The `incremental_reindex` function performs a multi\u2011step, incremental update of a project's FAISS vector store:\n\n1. **Chunk the incoming files** \u2013 The function receives `file_pairs`, a list of `(disk_path, original_path)` tuples for the latest version of each source file. It calls `chunk_all_files_with_paths` to parse each file and produce a list of `Chunk` objects that include the code, its symbol name, file path, and line numbers. If no parseable chunks are found it raises a `ValueError`.\n\n2. **Diff against the stored chunks** \u2013 Using `diff_chunks`, the newly created chunks are compared with the chunks already stored for the project. The diff returns three collections:\n   * `added_chunks` \u2013 brand\u2011new chunks that were not present before.\n   * `changed_chunks` \u2013 chunks whose content (hash) differs from the stored version.\n   * `deleted_rows` \u2013 rows in the DB that correspond to files that have been removed.\n   The function records the counts of each category in an `IncrementalIndexResult` instance.\n\n3. **Early\u2011exit if nothing changed** \u2013 If there are no added, changed, or deleted rows, the function returns the result immediately; the FAISS store is left untouched.\n\n4. **Load the current FAISS index** \u2013 `load_index(user_id, project.pk)` loads the existing on\u2011disk FAISS store for the project into memory.\n\n5. **Remove deleted chunks from FAISS** \u2013 For every row in `deleted_rows`, the associated FAISS vector IDs are collected and passed to `remove_from_faiss`. The store is updated in\u2011memory, and the corresponding `ChunkIndex` rows are deleted from the database.\n\n6. **Remove changed chunks from FAISS** \u2013 Changed chunks must be re\u2011added with fresh embeddings. The function builds a set of `(symbol_name, file_path)` pairs for the changed chunks, queries `ChunkIndex` for matching rows, extracts their FAISS IDs, removes those vectors from the store, and deletes the rows from the DB.\n\n7. **Generate explanations for new and changed chunks** \u2013 The union of `added_chunks` and `changed_chunks` is sent to `generate_explanations_batch`. This calls the LLM to produce a detailed explanation for each chunk and returns both the explanation data and token\u2011usage information.\n\n8. **Add the new/changed chunks to FAISS** \u2013 `add_to_faiss` receives the in\u2011memory store, the list of chunks to add, and their explanations. It embeds each chunk, inserts the vectors into the FAISS index, and returns the updated store together with the newly assigned FAISS IDs.\n\n9. **Persist the updated FAISS store** \u2013 `save_index(store, user_id, project.pk)` writes the modified FAISS index back to disk.\n\n10. **Create new `ChunkIndex` rows** \u2013 For each newly added chunk the function builds a `ChunkIndex` model instance containing metadata (project, symbol, file path, chunk type, hash, FAISS ID, explanation, line range, token usage, etc.). All rows are bulk\u2011created in the database.\n\n11. **Return the summary** \u2013 Finally, the populated `IncrementalIndexResult` (with counts of added, changed, deleted, and skipped chunks) is returned to the caller.\n\nOverall, `incremental_reindex` efficiently updates the vector store by only re\u2011processing files that are new or have changed, while safely removing stale vectors and keeping the database in sync with the FAISS index.",
+      "hit": true,
+      "recall": 0.3333333333333333,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 3132,
+        "completion_tokens": 939
+      }
+    },
+    {
+      "query": "How can I get a human\u2011readable summary of an IncrementalIndexResult instance?",
+      "expected_chunks": [
+        "IncrementalIndexResult.__str__"
+      ],
+      "retrieved_chunks": [
+        "IncrementalIndexResult",
+        "IncrementalIndexResult.__str__",
+        "IncrementalIndexResult.__init__",
+        "incremental_reindex",
+        "stream_answer"
+      ],
+      "answer": "The `IncrementalIndexResult` class already implements a `__str__` method that formats the counters into a readable one\u2011line summary.  Simply convert the instance to a string (or print it) and you\u2019ll get something like:\n\n```python\nresult = IncrementalIndexResult()\n# \u2026 after indexing \u2026\nprint(result)  # or str(result)\n```\n\nOutput example:\n```\nAdded: 12 | Changed: 3 | Deleted: 1 | Skipped (unchanged): 45\n```\n\nThe `__str__` implementation is defined in the retrieved code:\n```python\ndef __str__(self):\n    return (\n        f\"Added: {self.added_count} | \"\n        f\"Changed: {self.changed_count} | \"\n        f\"Deleted: {self.deleted_count} | \"\n        f\"Skipped (unchanged): {self.skipped_count}\"\n    )\n```\nSo calling `str(your_result)` or `print(your_result)` gives you a human\u2011readable summary.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 3630,
+        "completion_tokens": 391
+      }
+    },
+    {
+      "query": "Which function loads the cross\u2011encoder model used by rerank, and how does rerank apply it to rank documents?",
+      "expected_chunks": [
+        "_get_cross_encoder",
+        "rerank"
+      ],
+      "retrieved_chunks": [
+        "_get_cross_encoder",
+        "rerank_docs",
+        "stream_answer",
+        "rerank",
+        "get_embeddings"
+      ],
+      "answer": "Error evaluating context: Error code: 400 - {'error': {'message': 'Tool choice is required, but model did not call a tool', 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': ''}}",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "query": "What happens inside remove_from_faiss when the list of IDs to delete is empty?",
+      "expected_chunks": [
+        "remove_from_faiss"
+      ],
+      "retrieved_chunks": [
+        "remove_from_faiss",
+        "ConversationDetailView.delete",
+        "incremental_reindex",
+        "get_faiss_ids_by_symbols",
+        "get_docs_by_faiss_ids"
+      ],
+      "answer": "When `remove_from_faiss` receives an empty list of FAISS IDs (i.e., `faiss_ids` is falsy), it immediately hits the guard clause:\n```python\nif not faiss_ids or not hasattr(store, 'index_to_docstore_id'):\n    return store\n```\nBecause the condition `not faiss_ids` evaluates to `True`, the function returns the original `store` unchanged and skips any further processing. No documents are collected, no rebuilding of the index occurs, and the function simply hands back the unmodified FAISS store.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2324,
+        "completion_tokens": 270
+      }
+    },
+    {
+      "query": "When adding code chunks to FAISS with add_to_faiss, what information is stored in each Document's metadata?",
+      "expected_chunks": [
+        "add_to_faiss"
+      ],
+      "retrieved_chunks": [
+        "add_to_faiss",
+        "build_and_save_index",
+        "incremental_reindex",
+        "ChunkIndex",
+        "IndexFilesView.post"
+      ],
+      "answer": "In `add_to_faiss`, each code chunk is wrapped in a `Document` whose `metadata` dictionary contains the following keys:\n\n- **code** \u2013 the raw source code text of the chunk (`chunk.code_text`).\n- **symbol** \u2013 the fully\u2011qualified name of the function/class/method (`chunk.symbol_name`).\n- **chunk_type** \u2013 the type of chunk (e.g., `function`, `class`, `method`).\n- **file_path** \u2013 the path to the source file containing the chunk.\n- **start_line** \u2013 the line number where the chunk starts in the file.\n- **end_line** \u2013 the line number where the chunk ends.\n- **one_line_summary** \u2013 a concise one\u2011line summary generated by the LLM (`explanation[\"one_line_summary\"]`).\n- **dependencies** \u2013 a list of symbols that this chunk depends on (`explanation[\"dependencies\"]`).\n- **dependency_summaries** \u2013 a list of strings of the form `\"<dependency>: <summary>\"` for each dependency that also appears in the batch, built from the `symbol_to_summary` mapping.\n\nThese metadata fields are stored alongside the document\u2019s `page_content`, which holds the detailed LLM\u2011generated explanation of the chunk.",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 3930,
+        "completion_tokens": 408
+      }
+    },
+    {
+      "query": "How does TokenTrackingCallback track token usage after a language model finishes generating a response?",
+      "expected_chunks": [
+        "TokenTrackingCallback.__init__",
+        "TokenTrackingCallback.on_llm_end"
+      ],
+      "retrieved_chunks": [
+        "TokenTrackingCallback",
+        "TokenTrackingCallback.on_llm_end",
+        "force_answer",
+        "generate_explanation",
+        "evaluate_and_answer"
+      ],
+      "answer": "The `TokenTrackingCallback` implements the `on_llm_end` callback, which LangChain calls automatically when the language model finishes generating a response. Inside this method it:\n\n1. Retrieves the token\u2011usage information that the LLM attaches to the response via `response.llm_output.get(\"token_usage\", {})`.\n2. Reads the three counters \u2013 `prompt_tokens`, `completion_tokens`, and `total_tokens` \u2013 from that dictionary (defaulting to\u202f0 if a key is missing).\n3. Adds the retrieved values to the instance attributes `self.prompt_tokens`, `self.completion_tokens`, and `self.total_tokens`.\n4. Silently ignores any errors (e.g., if the response lacks a `token_usage` field) with a `try/except` block.\n\nThus, after each LLM call the callback accumulates the number of tokens used for the prompt, the completion, and the overall total, making the usage data available for later logging or reporting.",
+      "hit": true,
+      "recall": 0.5,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 2065,
+        "completion_tokens": 396
+      }
+    },
+    {
+      "query": "How does diff_chunks use compute_hash to identify changed chunks?",
+      "expected_chunks": [
+        "diff_chunks",
+        "compute_hash"
+      ],
+      "retrieved_chunks": [
+        "incremental_reindex",
+        "diff_chunks",
+        "build_cited_chunks",
+        "chunk_all_files_with_paths",
+        "build_and_save_index"
+      ],
+      "answer": "In `diff_chunks` the function first builds a lookup of the newly\u2011generated `CodeChunk` objects and a lookup of the stored `ChunkIndex` rows. For each new chunk it computes a hash of the chunk\u2019s source code with `compute_hash(chunk.code_text)`. It then looks up the corresponding stored row (if any) and compares the newly computed hash with the stored row\u2019s `code_hash` field. If the hashes differ, the chunk is considered **changed** and is added to the `changed_chunks` list. If there is no stored row, the chunk is marked as **added**; if the hashes match, the chunk is unchanged and ignored. Thus `compute_hash` provides a deterministic fingerprint of the chunk\u2019s code, allowing `diff_chunks` to detect modifications by simple hash comparison.",
+      "hit": true,
+      "recall": 0.5,
+      "reciprocal_rank": 0.5,
+      "usage": {
+        "prompt_tokens": 3264,
+        "completion_tokens": 307
+      }
+    },
+    {
+      "query": "What fields are available in the RankedChunk data holder?",
+      "expected_chunks": [
+        "RankedChunk"
+      ],
+      "retrieved_chunks": [
+        "RankedChunk",
+        "rerank",
+        "Meta",
+        "Meta",
+        "build_cited_chunks"
+      ],
+      "answer": "The `RankedChunk` class defines the following fields:\n```python\nclass RankedChunk:\n    explanation: str          # The embedded text (FAISS page_content)\n    code: str                 # Original source code (from metadata)\n    symbol: str               # Function or class name\n    chunk_type: str           # \"function\" | \"class\" | \"method\"\n    file_path: str            # Path to the source file\n    start_line: int           # Starting line number of the chunk\n    end_line: int             # Ending line number of the chunk\n    score: float              # CrossEncoder relevance score (higher = more relevant)\n    one_line_summary: str = \"\"   # Optional one\u2011line summary of the chunk\n    dependency_summaries: list[str] = None  # Summaries of any dependencies\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 1495,
+        "completion_tokens": 329
+      }
+    },
+    {
+      "query": "How do I instantiate an IncrementalIndexResult and what are its initial counter values?",
+      "expected_chunks": [
+        "IncrementalIndexResult.__init__",
+        "IncrementalIndexResult"
+      ],
+      "retrieved_chunks": [
+        "IncrementalIndexResult",
+        "IncrementalIndexResult.__init__",
+        "IncrementalIndexResult.__str__",
+        "incremental_reindex",
+        "ReindexView.post"
+      ],
+      "answer": "You can create an `IncrementalIndexResult` simply by calling its constructor:\n\n```python\nfrom path.to.module import IncrementalIndexResult  # adjust the import to the actual location\n\nresult = IncrementalIndexResult()\n```\n\nWhen instantiated, the `__init__` method sets all of its counters to zero, so the initial values are:\n\n- `added_count`   \u2192 `0`\n- `changed_count` \u2192 `0`\n- `deleted_count` \u2192 `0`\n- `skipped_count` \u2192 `0`\n\nYou can verify this by printing the object or accessing the attributes directly:\n\n```python\nprint(result)               # => Added: 0 | Changed: 0 | Deleted: 0 | Skipped (unchanged): 0\nprint(result.added_count)   # 0\nprint(result.changed_count) # 0\nprint(result.deleted_count) # 0\nprint(result.skipped_count) # 0\n```",
+      "hit": true,
+      "recall": 1.0,
+      "reciprocal_rank": 1.0,
+      "usage": {
+        "prompt_tokens": 2588,
+        "completion_tokens": 324
+      }
+    }
+  ]
+}
