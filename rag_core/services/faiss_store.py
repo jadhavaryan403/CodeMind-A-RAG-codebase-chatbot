@@ -12,7 +12,6 @@ All paths are derived from integer PKs only — never from user-supplied strings
 
 from pathlib import Path
 from typing import Optional
-import pickle
 import os
 
 from langchain_community.vectorstores import FAISS
@@ -33,12 +32,6 @@ def _store_dir(user_id: int, project_id: int) -> Path:
 
 
 # ── Build & Save ──────────────────────────────────────────────────────────────
-
-def load_symbol_index(path):
-    '''Helper to load the symbol index (pickle) for a given project.'''
-    import pickle
-    with open(path, "rb") as f:
-        return pickle.load(f)
 
 def get_docs_by_faiss_ids(store, ids: list[int]):
     '''Helper to retrieve Documents from the FAISS store given a list of FAISS IDs.'''
@@ -122,10 +115,6 @@ def build_and_save_index(
 
     index_path = str(_store_dir(user_id, project_id))
     store.save_local(index_path)
-
-    # ✅ Save symbol index (pickle)
-    with open(os.path.join(index_path, "symbol_index.pkl"), "wb") as f:
-        pickle.dump(symbol_index, f)
 
     # ---------------- DB PART (unchanged) ---------------- #
 
