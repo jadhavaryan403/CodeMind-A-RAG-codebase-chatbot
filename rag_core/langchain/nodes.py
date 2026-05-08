@@ -17,7 +17,6 @@ follow-up questions and rewrites the query correctly for FAISS.
 import json
 from typing import Optional
 
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
@@ -99,11 +98,11 @@ _evaluator_chain    = None
 _force_answer_chain = None
 
 
-def _get_base_llm() -> ChatGoogleGenerativeAI:
+def _get_base_llm() -> ChatGroq:
     global _base_llm
     if _base_llm is None:
-        # if not settings.GOOGLE_API_KEY:
-        #     raise ValueError("GOOGLE_API_KEY is not set in .env")
+        # if not settings.GROQ_API_KEY:
+        #     raise ValueError("GROQ_API_KEY is not set in .env")
         _base_llm = ChatGroq(
             model="openai/gpt-oss-120b",
             groq_api_key=settings.GROQ_API_KEY,
