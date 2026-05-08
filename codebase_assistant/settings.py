@@ -66,6 +66,10 @@ MIDDLEWARE = [
 
 CORS_ALLOW_ALL_ORIGINS = True
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://codemind-2li4.onrender.com",
+]
+
 ROOT_URLCONF = 'codebase_assistant.urls'
 
 TEMPLATES = [
