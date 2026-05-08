@@ -49,7 +49,12 @@ tqdm>=4.66
 # Optional Production Server
 # =========================
 gunicorn>=23.0
+
+# =========================
+# Database Support
+# ========================
 psycopg2-binary>=2.9
+dj-database-url
 
 # =========================
 # Optional Logging / Monitoring
