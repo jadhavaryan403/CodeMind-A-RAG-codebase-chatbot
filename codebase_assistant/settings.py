@@ -87,31 +87,15 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
 
-    'formatters': {
-        'standard': {
-            'format': '[{levelname}] {asctime} {name}: {message}',
-            'style': '{',
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
         },
     },
 
-    'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs/app.log'),
-            'formatter': 'standard',
-        },
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-
-    'loggers': {
-        '': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
     },
 }
 
