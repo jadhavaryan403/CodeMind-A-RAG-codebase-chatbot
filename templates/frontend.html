@@ -718,7 +718,6 @@
 /* ══════════════════════════════════════════════════════
    CONFIG
 ══════════════════════════════════════════════════════ */
-const API = 'http://localhost:8000';
 
 /* ══════════════════════════════════════════════════════
    STATE
@@ -745,7 +744,7 @@ async function api(method, path, body=null, isForm=false) {
   if (!isForm && body) headers['Content-Type']  = 'application/json';
   const opts = { method, headers };
   if (body) opts.body = isForm ? body : JSON.stringify(body);
-  const res  = await fetch(`${API}${path}`, opts);
+  const res  = await fetch(`${path}`, opts);
   if (res.status === 401) { clearSession(); showAuthPage(); throw new Error('Session expired.'); }
   const ct   = res.headers.get('content-type') || '';
   const data = ct.includes('json') ? await res.json() : await res.text();
@@ -784,7 +783,7 @@ async function login() {
   if (!u || !p) { showAlert('loginAlert', 'error', 'Enter username and password.'); return; }
   btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Signing in…';
   try {
-    const res  = await fetch(`${API}/api/login/`, {
+    const res  = await fetch(`/api/login/`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ username: u, password: p }),
@@ -838,7 +837,7 @@ async function register() {
 
   btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Creating account…';
   try {
-    const res  = await fetch(`${API}/api/register/`, {
+    const res  = await fetch(`/api/register/`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ username, email, password, password2 }),
@@ -964,7 +963,7 @@ function togglePw(fieldId) {
 window.addEventListener('DOMContentLoaded', async () => {
   if (!S.token) return;
   try {
-    const r = await fetch(`${API}/api/projects/`, {
+    const r = await fetch(`/api/projects/`, {
       headers: { 'Authorization': `Token ${S.token}` }
     });
     if (r.status === 401) throw new Error();
@@ -1476,7 +1475,7 @@ async function sendQuery() {
   let citedChunks = [];
 
   try {
-    const response = await fetch(`${API}/api/conversations/${S.activeConv.id}/stream/`, {
+    const response = await fetch(`/api/conversations/${S.activeConv.id}/stream/`, {
       method:  'POST',
       headers: {
         'Authorization': `Token ${S.token}`,
