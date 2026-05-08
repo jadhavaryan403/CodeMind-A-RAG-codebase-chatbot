@@ -183,6 +183,13 @@ VECTORSTORE_ROOT = BASE_DIR / "vectorstores"
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 RERANKER_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+EMBEDDING_ONNX_PATH = "onnx_embedding_model/model.onnx"
+EMBEDDING_TOKENIZER_PATH = "onnx_embedding_model/tokenizer.json"
+
+RERANKER_ONNX_PATH = "onnx_model/model.onnx"
+RERANKER_TOKENIZER_JSON_PATH = "onnx_model/tokenizer.json"
+
 LLM_MODEL_NAME = os.environ.get("LLM_MODEL_NAME", "gemini-2.5-flash-lite")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 FAISS_TOP_K = 10

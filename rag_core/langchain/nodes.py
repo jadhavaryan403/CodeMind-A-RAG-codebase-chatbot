@@ -498,6 +498,8 @@ def stream_answer(
     def normalize(name: str) -> str:
         return name.split(".")[-1]
 
+    print('inside nodes.py stream_answer function')
+
     while True:
 
         # safety net to prevent infinite loops in edge cases where LLM keeps asking for dependencies or rewriting without improving retrieval
@@ -518,6 +520,7 @@ def stream_answer(
         if retry_count == 0 or (result and result.rewritten_query):
             try:
                 documents = retrieve(current_query, user_id, project_id)
+                print("Retrieved docs count:", len(documents))
             except ValueError as e:
                 yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
                 return

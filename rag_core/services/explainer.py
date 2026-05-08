@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from django.conf import settings
 from utils.llm_callback import TokenTrackingCallback
 import logging
+import time
 
 _explainer_chain = None
 logger = logging.getLogger(__name__)
@@ -108,6 +109,7 @@ def generate_explanations_batch(chunks: list) -> list[dict]:
                     "completion_tokens": callback.completion_tokens
                 }
             })
+            time.sleep(3)  # brief pause to avoid rate limits
 
         except Exception as e:
             logger.error(f"Error generating explanation for {chunk.symbol_name}: {e}")
