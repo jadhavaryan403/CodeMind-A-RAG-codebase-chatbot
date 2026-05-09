@@ -16,6 +16,7 @@ from api.views import (
     ReindexView,
     GithubImportFilesView,
     IndexFilesView,
+    ProjectStatusView,
 )
 
 urlpatterns = [
@@ -33,4 +34,5 @@ urlpatterns = [
     path("projects/<int:project_id>/import-github-files/", GithubImportFilesView.as_view()),
     path("projects/<int:project_id>/index-files/",         IndexFilesView.as_view()),
     path("projects/<int:project_id>/reindex/", ReindexView.as_view()),
+    path('projects/<int:project_id>/status/', ProjectStatusView.as_view()),
 ]

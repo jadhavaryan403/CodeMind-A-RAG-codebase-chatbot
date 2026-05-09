@@ -1239,6 +1239,114 @@ function clearQueue() {
   document.getElementById('folderInput').value = '';
 }
 
+
+let indexingPollInterval = null;
+
+async function pollProjectStatus(projectId, type = 'upload') {
+
+  indexingPollInterval = setInterval(async () => {
+
+    try {
+
+      const r = await api(
+        'GET',
+        `/api/projects/${projectId}/status/`
+      );
+
+      const status = r.status;
+      const step   = r.indexing_step || 'Processing...';
+
+      // Upload progress UI
+      if (type === 'upload') {
+
+        let progress = 30;
+
+        if (step.includes('Chunking')) {
+          progress = 40;
+        }
+        else if (step.includes('explanations')) {
+          progress = 80;
+        }
+        else if (step.includes('vector')) {
+          progress = 90;
+        }
+        else if (step.includes('Completed')) {
+          progress = 100;
+        }
+
+        showProg(true, step, progress);
+      }
+
+      // GitHub progress UI
+      else {
+
+        let progress = 30;
+
+        if (step.includes('Chunking')) {
+          progress = 40;
+        }
+        else if (step.includes('explanations')) {
+          progress = 80;
+        }
+        else if (step.includes('vector')) {
+          progress = 90;
+        }
+        else if (step.includes('Completed')) {
+          progress = 100;
+        }
+
+        showGithubProg(true, step, progress);
+      }
+
+      // Completed
+      if (status === 'ready') {
+
+        clearInterval(indexingPollInterval);
+
+        if (type === 'upload') {
+          showProg(true, 'Done!', 100);
+        } else {
+          showGithubProg(true, 'Done!', 100);
+        }
+
+        await sleep(500);
+
+        if (type === 'upload') {
+          showProg(false);
+        } else {
+          showGithubProg(false);
+        }
+      }
+
+      // Failed
+      if (status === 'failed') {
+
+        clearInterval(indexingPollInterval);
+
+        if (type === 'upload') {
+
+          showProg(false);
+
+        } else {
+
+          showGithubProg(false);
+
+          showGithubError(
+            r.error_message || 'Indexing failed'
+          );
+        }
+      }
+
+    } catch (e) {
+
+      console.error('Polling error:', e);
+
+      clearInterval(indexingPollInterval);
+    }
+
+  }, 2000);
+}
+
 /*
  * uploadFiles() — sends files + relative_paths to Django.
  * Both arrays are sent as FormData so Django can read:
@@ -1246,46 +1354,92 @@ function clearQueue() {
  *   request.POST.getlist('relative_paths')
  */
 async function uploadFiles() {
+
   if (!S.activeProject || !S.pendingFiles.length) return;
 
   const btn = document.getElementById('uploadBtn');
+
   btn.disabled = true;
-  btn.innerHTML = '<div class="spinner"></div> Uploading…';
+
+  btn.innerHTML =
+    '<div class="spinner"></div> Uploading…';
+
   showProg(true, 'Uploading files…', 20);
 
   const fd = new FormData();
+
   S.pendingFiles.forEach(f => {
+
     fd.append('files', f);
-    // Send relative path so Django can preserve folder structure on disk
-    fd.append('relative_paths', f.webkitRelativePath || '');
+
+    fd.append(
+      'relative_paths',
+      f.webkitRelativePath || ''
+    );
   });
 
   try {
-    showProg(true, 'Explaining chunks with Gemini…', 50);
-    const r = await api('POST', `/api/projects/${S.activeProject.id}/upload/`, fd, true);
-    showProg(true, 'Building FAISS index…', 85);
-    await sleep(400);
+
+    // START POLLING
+    pollProjectStatus(
+      S.activeProject.id,
+      'upload'
+    );
+
+    const r = await api(
+      'POST',
+      `/api/projects/${S.activeProject.id}/upload/`,
+      fd,
+      true
+    );
+
+    clearInterval(indexingPollInterval);
+
     showProg(true, 'Done!', 100);
+
     await sleep(500);
+
     showProg(false);
 
-    toast(`Indexed ${r.chunks_indexed} chunks from ${r.files_saved} file(s).`, 'success');
+    toast(
+      `Indexed ${r.chunks_indexed} chunks from ${r.files_saved} file(s).`,
+      'success'
+    );
+
     clearQueue();
 
-    // Refresh project status badge
+    // Refresh project
     await loadProjects();
-    S.activeProject = S.projects.find(p => p.id === S.activeProject.id);
-    const b = document.getElementById('uploadViewStatus');
+
+    S.activeProject = S.projects.find(
+      p => p.id === S.activeProject.id
+    );
+
+    const b = document.getElementById(
+      'uploadViewStatus'
+    );
+
     b.textContent = S.activeProject.status;
-    b.className   = `proj-status status-${S.activeProject.status}`;
+
+    b.className =
+      `proj-status status-${S.activeProject.status}`;
 
     switchUTab('files');
+
     await loadProjectFiles();
+
   } catch(e) {
+
+    clearInterval(indexingPollInterval);
+
     showProg(false);
+
     toast(e.message, 'error');
+
   } finally {
-    btn.disabled  = false;
+
+    btn.disabled = false;
+
     btn.innerHTML = '⬆ Upload & Index';
   }
 }
@@ -1768,82 +1922,123 @@ function showGithubError(msg) {
 
 // ── Step 1: Import files only (no indexing) ────────────────────────────────
 async function importGithubRepo() {
-  const url = document.getElementById('githubUrl').value.trim();
-  if (!url || !S.activeProject) return;
 
-  const importBtn = document.getElementById('githubImportBtn');
-  const indexBtn  = document.getElementById('githubIndexBtn');
+  if (!S.activeProject) return;
 
-  importBtn.disabled  = true;
-  importBtn.innerHTML = '<div class="spinner"></div> Importing files…';
-  indexBtn.disabled   = true;
-  document.getElementById('githubError').style.display = 'none';
-  showGithubProg(true, 'Connecting to GitHub…', 15);
+  const url = document
+    .getElementById('githubUrl')
+    .value
+    .trim();
+
+  if (!url) {
+
+    showGithubError(
+      'Please enter a GitHub repository URL.'
+    );
+
+    return;
+  }
+
+  const importBtn =
+    document.getElementById('githubImportBtn');
+
+  const indexBtn =
+    document.getElementById('githubIndexBtn');
+
+  importBtn.disabled = true;
+
+  importBtn.innerHTML =
+    '<div class="spinner"></div> Importing…';
+
+  document.getElementById(
+    'githubError'
+  ).style.display = 'none';
 
   try {
-    showGithubProg(true, 'Fetching file tree…', 35);
-    await sleep(200);
-    showGithubProg(true, 'Downloading .py files…', 60);
+
+    showGithubProg(
+      true,
+      'Fetching repository files...',
+      30
+    );
 
     const r = await api(
       'POST',
       `/api/projects/${S.activeProject.id}/import-github-files/`,
-      { url }
+      {
+        url: url
+      }
     );
 
-    showGithubProg(true, 'Files saved!', 100);
+    showGithubProg(
+      true,
+      `Imported ${r.files_imported} files`,
+      100
+    );
+
     await sleep(500);
+
     showGithubProg(false);
 
-    toast(`Downloaded ${r.files_saved} files from GitHub. Now click Index.`, 'success');
+    toast(
+      `Imported ${r.files_imported} files.`,
+      'success'
+    );
 
-    // Refresh project list so github_url is updated
-    await loadProjects();
-    S.activeProject = S.projects.find(p => p.id === S.activeProject.id);
-
-    // Update reindex button visibility
-    const reindexBtn = document.getElementById('reindexBtn');
-    if (reindexBtn) {
-      reindexBtn.disabled      = false;
-      reindexBtn.style.opacity = '1';
-      reindexBtn.style.cursor  = 'pointer';
-      reindexBtn.title         = 'Re-fetch from GitHub and re-index changed files';
-    }
-
-    // Enable the Index button — files are ready
+    // Enable indexing button
     indexBtn.disabled = false;
 
-    // Switch to files tab so user can see what was downloaded
-    switchUTab('files');
+    // Refresh file list
     await loadProjectFiles();
 
   } catch(e) {
+
     showGithubProg(false);
+
     showGithubError(e.message);
-    importBtn.disabled = false;
+
   } finally {
-    importBtn.disabled  = false;
-    importBtn.innerHTML = '🐙 Import Files from GitHub';
+
+    importBtn.disabled = false;
+
+    importBtn.innerHTML =
+      '🐙 Import Files from GitHub';
   }
 }
 
 // ── Step 2: Index the imported files ──────────────────────────────────────
 async function indexGithubFiles() {
+
   if (!S.activeProject) return;
 
-  const importBtn = document.getElementById('githubImportBtn');
-  const indexBtn  = document.getElementById('githubIndexBtn');
+  const importBtn =
+    document.getElementById('githubImportBtn');
 
-  indexBtn.disabled   = true;
-  indexBtn.innerHTML  = '<div class="spinner"></div> Indexing…';
-  importBtn.disabled  = true;
-  document.getElementById('githubError').style.display = 'none';
-  showGithubProg(true, 'Generating explanations with Gemini…', 20);
+  const indexBtn =
+    document.getElementById('githubIndexBtn');
+
+  indexBtn.disabled = true;
+
+  indexBtn.innerHTML =
+    '<div class="spinner"></div> Indexing…';
+
+  document.getElementById(
+    'githubError'
+  ).style.display = 'none';
+
+  showGithubProg(
+    true,
+    'Starting indexing...',
+    20
+  );
 
   try {
-    showGithubProg(true, 'Chunking code with AST…', 40);
-    await sleep(200);
-    showGithubProg(true, 'Building FAISS index…', 70);
+
+    // START POLLING
+    pollProjectStatus(
+      S.activeProject.id,
+      'github'
+    );
 
     const r = await api(
       'POST',
@@ -1851,32 +2046,56 @@ async function indexGithubFiles() {
       {}
     );
 
+    clearInterval(indexingPollInterval);
+
     showGithubProg(true, 'Done!', 100);
+
     await sleep(500);
+
     showGithubProg(false);
 
-    toast(`Indexed ${r.chunks_indexed} chunks from ${r.files_indexed} files.`, 'success');
+    toast(
+      `Indexed ${r.chunks_indexed} chunks from ${r.files_indexed} files.`,
+      'success'
+    );
 
-    // Refresh project — status should now be "ready"
+    // Refresh project
     await loadProjects();
-    S.activeProject = S.projects.find(p => p.id === S.activeProject.id);
-    const b = document.getElementById('uploadViewStatus');
+
+    S.activeProject = S.projects.find(
+      p => p.id === S.activeProject.id
+    );
+
+    const b = document.getElementById(
+      'uploadViewStatus'
+    );
+
     b.textContent = S.activeProject.status;
-    b.className   = `proj-status status-${S.activeProject.status}`;
+
+    b.className =
+      `proj-status status-${S.activeProject.status}`;
 
     // Reset GitHub panel
     document.getElementById('githubUrl').value = '';
+
     clearGithubPreview();
-    indexBtn.disabled  = true;
-    indexBtn.innerHTML = '⚡ Index Imported Files';
+
+    indexBtn.disabled = true;
 
   } catch(e) {
+
+    clearInterval(indexingPollInterval);
+
     showGithubProg(false);
+
     showGithubError(e.message);
+
     indexBtn.disabled = false;
+
   } finally {
-    importBtn.disabled  = false;
-    indexBtn.innerHTML  = '⚡ Index Imported Files';
+
+    indexBtn.innerHTML =
+      '⚡ Index Imported Files';
   }
 }
 

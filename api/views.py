@@ -243,7 +243,8 @@ class FileUploadView(APIView):
 
         # Index files into FAISS
         project.status = Project.Status.INDEXING
-        project.save(update_fields=["status"])
+        project.indexing_step = "Chunking files"
+        project.save(update_fields=["status" ,"indexing_step"])
 
         try:
             all_chunks = []
@@ -254,6 +255,9 @@ class FileUploadView(APIView):
                 raise ValueError("No parseable chunks found.")
 
             print(f"Total chunks before explanation: {len(all_chunks)}")
+            project.indexing_step = "Generating explanations"
+            project.save(update_fields=["indexing_step"])
+
             # Step 1: get results (data + usage)
             results = generate_explanations_batch(all_chunks)
 
@@ -265,8 +269,8 @@ class FileUploadView(APIView):
             explanations = _validate_explanations(explanations, all_chunks)
             logger.info("Generated explanations for uploaded files", extra={"project_id": project.pk, "chunk_count": len(all_chunks)})
 
-            for chunk, exp in zip(all_chunks[:5], explanations[:5]):
-                print(f"[GRAPH] {chunk.symbol_name} → {exp['dependencies']}")
+            project.indexing_step = "Building vector store"
+            project.save(update_fields=["indexing_step"])
 
             build_and_save_index(
                 user_id=request.user.id,
@@ -278,14 +282,16 @@ class FileUploadView(APIView):
             logger.info("FAISS index built and saved", extra={"project_id": project.pk})
 
             project.status        = Project.Status.READY
+            project.indexing_step = "Completed"
             project.error_message = ""
-            project.save(update_fields=["status", "error_message"])
+            project.save(update_fields=["status", "indexing_step", "error_message"])
 
         except Exception as exc:
             logger.exception("Indexing failed for project %s", project.pk)
             project.status        = Project.Status.FAILED
+            project.indexing_step = "Failed"
             project.error_message = str(exc)
-            project.save(update_fields=["status", "error_message"])
+            project.save(update_fields=["status", "indexing_step", "error_message"])
             return Response(
                 {"error": "Indexing failed.", "detail": str(exc)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -296,6 +302,8 @@ class FileUploadView(APIView):
             "chunks_indexed": len(all_chunks),
             "files_saved":    len(saved_paths),
             "skipped_errors": errors,
+            "status":         project.status,
+            "indexing_step":  project.indexing_step,
         })
 
 
@@ -523,8 +531,9 @@ class GithubImportView(APIView):
 
         # ── Index into FAISS (same pipeline as manual upload) ─────────────────
         project.status = Project.Status.INDEXING
+        project.indexing_step = "Chunking files"
         project.github_url = url
-        project.save(update_fields=['status', 'github_url'])
+        project.save(update_fields=['status', 'indexing_step', 'github_url'])
 
         try:
             all_chunks = []
@@ -535,6 +544,9 @@ class GithubImportView(APIView):
                 raise ValueError("No parseable Python chunks found in repository.")
 
             print(f"Total chunks before explanation: {len(all_chunks)}")
+            project.indexing_step = "Generating explanations"
+            project.save(update_fields=["indexing_step"])
+
             # Step 1: get results (data + usage)
             results = generate_explanations_batch(all_chunks)
 
@@ -546,8 +558,8 @@ class GithubImportView(APIView):
             explanations = _validate_explanations(explanations, all_chunks)
             logger.info("Generated explanations for GitHub-imported files", extra={"project_id": project.pk, "chunk_count": len(all_chunks)})
 
-            for chunk, exp in zip(all_chunks[:5], explanations[:5]):
-                print(f"[GRAPH] {chunk.symbol_name} → {exp['dependencies']}")
+            project.indexing_step = "Building vector store"
+            project.save(update_fields=["indexing_step"])
 
             build_and_save_index(
                 user_id=request.user.id,
@@ -559,14 +571,16 @@ class GithubImportView(APIView):
             logger.info("FAISS index built and saved", extra={"project_id": project.pk})
 
             project.status        = Project.Status.READY
+            project.indexing_step = "Completed"
             project.error_message = ''
-            project.save(update_fields=['status', 'error_message'])
+            project.save(update_fields=['status', 'indexing_step', 'error_message'])
 
         except Exception as exc:
             logger.exception("GitHub indexing failed for project %s", project.pk)
             project.status        = Project.Status.FAILED
+            project.indexing_step = "Failed"
             project.error_message = str(exc)
-            project.save(update_fields=['status', 'error_message'])
+            project.save(update_fields=['status', 'indexing_step', 'error_message'])
             return Response(
                 {'error': 'Indexing failed.', 'detail': str(exc)},
                 status=500
@@ -577,6 +591,8 @@ class GithubImportView(APIView):
             'files_imported': len(saved_paths),
             'chunks_indexed': len(all_chunks),
             'skipped_errors': errors,
+            'status':         project.status,
+            'indexing_step': project.indexing_step
         })
 
 
@@ -663,7 +679,8 @@ class IndexFilesView(APIView):
             )
 
         project.status = Project.Status.INDEXING
-        project.save(update_fields=['status'])
+        project.indexing_step = "Chunking files"
+        project.save(update_fields=['status', 'indexing_step'])
 
         try:
             all_chunks = []
@@ -688,6 +705,9 @@ class IndexFilesView(APIView):
                 raise ValueError("No parseable chunks found.")
 
             print(f"Total chunks before explanation: {len(all_chunks)}")
+            project.indexing_step = "Generating explanations"
+            project.save(update_fields=["indexing_step"])
+
             # Step 1: get results (data + usage)
             results = generate_explanations_batch(all_chunks)
 
@@ -699,8 +719,8 @@ class IndexFilesView(APIView):
             explanations = _validate_explanations(explanations, all_chunks)
             logger.info("Generated explanations for files to be indexed", extra={"project_id": project.pk, "chunk_count": len(all_chunks)})
 
-            for chunk, exp in zip(all_chunks[:5], explanations[:5]):
-                print(f"[GRAPH] {chunk.symbol_name} → {exp['dependencies']}")
+            project.indexing_step = "Building vector store"
+            project.save(update_fields=["indexing_step"])
 
             build_and_save_index(
                 user_id=request.user.id,
@@ -713,19 +733,23 @@ class IndexFilesView(APIView):
             logger.info("FAISS index built and saved", extra={"project_id": project.pk})
 
             project.status        = Project.Status.READY
+            project.indexing_step = "Completed"
             project.error_message = ''
-            project.save(update_fields=['status', 'error_message'])
+            project.save(update_fields=['status', 'indexing_step', 'error_message'])
 
             return Response({
                 'message':        'Indexing complete.',
                 'files_indexed':  uploaded.count(),
                 'chunks_indexed': len(all_chunks),
+                'status':         project.status,
+                'indexing_step':  project.indexing_step,
             })
 
         except Exception as e:
             project.status        = Project.Status.FAILED
+            project.indexing_step = "Failed"
             project.error_message = str(e)
-            project.save(update_fields=['status', 'error_message'])
+            project.save(update_fields=['status', 'indexing_step', 'error_message'])
             return Response({'error': str(e)}, status=500)
 
 
@@ -797,3 +821,19 @@ class ReindexView(APIView):
             project.error_message = str(e)
             project.save(update_fields=['status', 'error_message'])
             return Response({'error': str(e)}, status=500)
+
+
+class ProjectStatusView(APIView):
+    '''GET /api/projects/<id>/status/ — returns current status and indexing step for frontend to poll during indexing.'''
+    def get(self, request, project_id):
+
+        project = Project.objects.get(
+            id=project_id,
+            owner=request.user
+        )
+
+        return Response({
+            "status": project.status,
+            "indexing_step": project.indexing_step,
+            "error_message": project.error_message,
+        })

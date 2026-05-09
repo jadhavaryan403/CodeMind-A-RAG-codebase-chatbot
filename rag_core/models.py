@@ -25,6 +25,7 @@ class Project(models.Model):
     name          = models.CharField(max_length=255)
     description   = models.TextField(blank=True)
     status        = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    indexing_step = models.CharField(max_length=100, blank=True, default="")
     error_message = models.TextField(blank=True)
     github_url    = models.URLField(blank=True)
     created_at    = models.DateTimeField(auto_now_add=True)
